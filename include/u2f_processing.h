@@ -24,4 +24,6 @@ void u2f_process_message(u2f_service_t *service, uint8_t *buffer,
                          uint8_t *channel);
 void u2f_timeout(u2f_service_t *service);
 
+void u2f_handle_ux_callback(u2f_service_t *service);
+
 #endif

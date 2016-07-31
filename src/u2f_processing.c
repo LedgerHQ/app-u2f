@@ -49,6 +49,8 @@ static const uint8_t NOTIFY_USER_PRESENCE_NEEDED[] = {
 #define FIDO_INS_SIGN 0x02
 #define FIDO_INS_GET_VERSION 0x03
 
+#define FIDO_INS_PROP_GET_COUNTER 0xC0 // U2F_VENDOR_FIRST
+
 #define P1_SIGN_CHECK_ONLY 0x07
 #define P1_SIGN_SIGN 0x03
 
@@ -59,6 +61,21 @@ static const uint8_t NOTIFY_USER_PRESENCE_NEEDED[] = {
 #define MAX_KEEPALIVE_TIMEOUT_MS 500
 
 static const uint8_t DUMMY_USER_PRESENCE[] = {SIGN_USER_PRESENCE_MASK};
+
+void u2f_handle_ux_callback(u2f_service_t *service) {
+    if (service->transportMedia == U2F_MEDIA_USB) {
+        // u2f_send_fragmented_response(service, U2F_CMD_MSG,
+        // (uint8_t*)SW_PROOF_OF_PRESENCE_REQUIRED,
+        // sizeof(SW_PROOF_OF_PRESENCE_REQUIRED), false);
+        u2f_send_fragmented_response(
+            service, U2F_CMD_MSG, (uint8_t *)SW_PROOF_OF_PRESENCE_REQUIRED,
+            sizeof(SW_PROOF_OF_PRESENCE_REQUIRED), true);
+    } else if (service->transportMedia == U2F_MEDIA_BLE) {
+        u2f_send_fragmented_response(
+            service, U2F_CMD_KEEPALIVE, (uint8_t *)NOTIFY_USER_PRESENCE_NEEDED,
+            sizeof(NOTIFY_USER_PRESENCE_NEEDED), false);
+    }
+}
 
 void u2f_handle_enroll(u2f_service_t *service, uint8_t p1, uint8_t p2,
                        uint8_t *buffer, uint16_t length) {
@@ -95,6 +112,8 @@ void u2f_handle_enroll(u2f_service_t *service, uint8_t p1, uint8_t p2,
             service->promptUserPresenceFunction(service, true,
                                                 applicationParameter);
         }
+
+        /* will be sent after UX asynch replied
         if (service->transportMedia == U2F_MEDIA_USB) {
             // u2f_send_fragmented_response(service, U2F_CMD_MSG,
             // (uint8_t*)SW_PROOF_OF_PRESENCE_REQUIRED,
@@ -109,12 +128,19 @@ void u2f_handle_enroll(u2f_service_t *service, uint8_t p1, uint8_t p2,
                                          false);
             service->requireKeepalive = true;
         }
+
+        */
+        if (service->transportMedia == U2F_MEDIA_BLE) {
+            service->requireKeepalive = true;
+        }
     } else {
         // screen_printf("ok to proceed\n");
         uint16_t offset = 0;
         uint16_t keyHandleLength;
         uint16_t signatureLength;
+#ifndef HAVE_NO_USER_PRESENCE_CHECK
         service->userPresence = false;
+#endif // HAVE_NO_USER_PRESENCE_CHECK
         service->messageBuffer[offset++] = U2F_ENROLL_RESERVED;
         keyHandleLength = u2f_crypto_generate_key_and_wrap(
             applicationParameter, service->messageBuffer + offset,
@@ -205,6 +231,7 @@ void u2f_handle_sign(u2f_service_t *service, uint8_t p1, uint8_t p2,
         u2f_crypto_reset();
     }
 
+#ifndef HAVE_NO_USER_PRESENCE_CHECK
     // If the application parameter doesn't match the last validated one, reset
     // the user presence
     if (service->confirmedApplicationParameter != NULL) {
@@ -213,6 +240,7 @@ void u2f_handle_sign(u2f_service_t *service, uint8_t p1, uint8_t p2,
             service->userPresence = false;
         }
     }
+#endif // HAVE_NO_USER_PRESENCE_CHECK
 
 #ifdef TEST_FAKE_USER_PRESENCE
     if (0) {
@@ -230,6 +258,7 @@ void u2f_handle_sign(u2f_service_t *service, uint8_t p1, uint8_t p2,
             service->promptUserPresenceFunction(service, false,
                                                 applicationParameter);
         }
+        /* send response after UX asynch reply
         if (service->transportMedia == U2F_MEDIA_USB) {
             // u2f_send_fragmented_response(service, U2F_CMD_MSG,
             // (uint8_t*)SW_PROOF_OF_PRESENCE_REQUIRED,
@@ -244,16 +273,28 @@ void u2f_handle_sign(u2f_service_t *service, uint8_t p1, uint8_t p2,
                                          false);
             service->requireKeepalive = true;
         }
+        */
+        if (service->transportMedia == U2F_MEDIA_BLE) {
+            service->requireKeepalive = true;
+        }
     } else {
         uint16_t offset = 0;
         uint16_t signatureLength;
-        if (!sign) {
+#ifdef HAVE_NO_USER_PRESENCE_CHECK
+        if (!sign && !service->userPresence)
+#else  // HAVE_NO_USER_PRESENCE_CHECK
+        if (!sign)
+#endif // HAVE_NO_USER_PRESENCE_CHECK
+        {
             u2f_send_fragmented_response(
                 service, U2F_CMD_MSG, (uint8_t *)SW_PROOF_OF_PRESENCE_REQUIRED,
                 sizeof(SW_PROOF_OF_PRESENCE_REQUIRED), true);
             return;
         }
+#ifndef HAVE_NO_USER_PRESENCE_CHECK
         service->userPresence = false;
+#endif // HAVE_NO_USER_PRESENCE_CHECK
+
         // screen_printf("confirming\n");
         service->messageBuffer[offset++] = SIGN_USER_PRESENCE_MASK;
         offset += u2f_counter_increase_and_get(service->messageBuffer + offset);
@@ -297,6 +338,25 @@ void u2f_handle_get_version(u2f_service_t *service, uint8_t p1, uint8_t p2,
     }
     u2f_send_fragmented_response(service, U2F_CMD_MSG, (uint8_t *)VERSION,
                                  sizeof(VERSION), true);
+}
+
+void u2f_handle_prop_get_counter(u2f_service_t *service, uint8_t p1, uint8_t p2,
+                                 uint8_t *buffer, uint16_t length) {
+    // screen_printf("U2F version\n");
+    (void)p1;
+    (void)p2;
+    (void)buffer;
+    uint8_t counterLength;
+    if (length != 0) {
+        u2f_send_fragmented_response(service, U2F_CMD_MSG,
+                                     (uint8_t *)SW_WRONG_LENGTH,
+                                     sizeof(SW_WRONG_LENGTH), true);
+        return;
+    }
+
+    counterLength = u2f_counter_get(service->messageBuffer);
+    u2f_send_fragmented_response(service, U2F_CMD_MSG, service->messageBuffer,
+                                 counterLength, true);
 }
 
 void u2f_handle_cmd_init(u2f_service_t *service, uint8_t *buffer,
@@ -374,6 +434,9 @@ void u2f_handle_cmd_msg(u2f_service_t *service, uint8_t *buffer,
         // screen_printf("version\n");
         u2f_handle_get_version(service, p1, p2, buffer + 7, dataLength);
         break;
+    case FIDO_INS_PROP_GET_COUNTER:
+        u2f_handle_prop_get_counter(service, p1, p2, buffer + 7, dataLength);
+        break;
     default:
         // screen_printf("unsupported\n");
         u2f_send_fragmented_response(service, U2F_CMD_MSG,
@@ -424,7 +487,6 @@ void u2f_timeout(u2f_service_t *service) {
         service->keepaliveTimeout += service->timerInterval;
         if (service->keepaliveTimeout > MAX_KEEPALIVE_TIMEOUT_MS) {
             service->keepaliveTimeout = 0;
-            service->timerNeedGeneralStatus = false;
             u2f_send_fragmented_response(service, U2F_CMD_KEEPALIVE,
                                          (uint8_t *)NOTIFY_USER_PRESENCE_NEEDED,
                                          sizeof(NOTIFY_USER_PRESENCE_NEEDED),

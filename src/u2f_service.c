@@ -33,12 +33,10 @@ void u2f_reset(u2f_service_t *service, bool keepUserPresence) {
         keepUserPresence = true;
         service->keepUserPresence = false;
     }
-#if 0
-	if (!keepUserPresence) {
-		service->userPresence = false;
-		os_memset(service->confirmedApplicationParameter, 0, 32);
-	}
-#endif
+#ifdef HAVE_NO_USER_PRESENCE_CHECK
+    service->keepUserPresence = true;
+    service->userPresence = true;
+#endif // HAVE_NO_USER_PRESENCE_CHECK
 }
 
 void u2f_initialize_service(u2f_service_t *service) {
@@ -48,6 +46,10 @@ void u2f_initialize_service(u2f_service_t *service) {
     u2f_reset(service, false);
     service->promptUserPresence = false;
     service->userPresence = false;
+#ifdef HAVE_NO_USER_PRESENCE_CHECK
+    service->keepUserPresence = true;
+    service->userPresence = true;
+#endif // HAVE_NO_USER_PRESENCE_CHECK
 }
 
 void u2f_send_direct_response_short(u2f_service_t *service, uint8_t *buffer,
@@ -62,8 +64,8 @@ void u2f_send_direct_response_short(u2f_service_t *service, uint8_t *buffer,
         maxSize = service->bleMtu;
         break;
     default:
-        screen_printf("Request to send on unsupported media %d\n",
-                      service->packetMedia);
+        PRINTF("Request to send on unsupported media %d\n",
+               service->packetMedia);
         break;
     }
     if (len > maxSize) {
@@ -125,10 +127,6 @@ void u2f_continue_sending_fragmented_response(u2f_service_t *service) {
         u2f_io_send(service->outputBuffer, dataSize, service->packetMedia);
         service->sendOffset += blockSize;
         service->sendPacketIndex++;
-        if (service->packetMedia == U2F_MEDIA_BLE) {
-            // Wait for the acknowledgement from the client
-            break;
-        }
     } while (service->sendOffset != service->sendLength);
     if (service->sendOffset == service->sendLength) {
         u2f_io_close_session();
@@ -151,4 +149,6 @@ void u2f_confirm_user_presence(u2f_service_t *service, bool userPresence,
         service->handleFunction(service, service->messageBuffer, channel);
     }
     service->promptUserPresence = false;
+
+    u2f_handle_ux_callback(service);
 }

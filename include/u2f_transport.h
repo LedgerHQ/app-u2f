@@ -22,8 +22,6 @@
 
 #include "u2f_service.h"
 
-#define USB_SEGMENT_SIZE 64
-#define BLE_SEGMENT_SIZE 512 // max MTU, min 20
 #define MAX_SEGMENT_SIZE                                                       \
     (USB_SEGMENT_SIZE > BLE_SEGMENT_SIZE ? USB_SEGMENT_SIZE : BLE_SEGMENT_SIZE)
 

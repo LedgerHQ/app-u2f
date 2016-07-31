@@ -25,5 +25,7 @@
 
 void u2f_counter_init(void);
 uint8_t u2f_counter_increase_and_get(uint8_t *buffer);
+uint8_t u2f_counter_get(uint8_t *buffer);
+uint8_t u2f_counter_set(uint32_t counter);
 
 #endif

@@ -37,4 +37,6 @@ typedef struct u2f_config_t {
 #endif
 } u2f_config_t;
 
+void u2f_init_config(void);
+
 #endif

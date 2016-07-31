@@ -38,3 +38,19 @@ uint8_t u2f_counter_increase_and_get(uint8_t *buffer) {
     buffer[3] = (counter & 0xff);
     return 4;
 }
+
+uint8_t u2f_counter_get(uint8_t *buffer) {
+    buffer[0] = ((N_u2f.counter >> 24) & 0xff);
+    buffer[1] = ((N_u2f.counter >> 16) & 0xff);
+    buffer[2] = ((N_u2f.counter >> 8) & 0xff);
+    buffer[3] = (N_u2f.counter & 0xff);
+    return 4;
+}
+
+uint8_t u2f_counter_set(uint32_t counter) {
+    if (counter <= N_u2f.counter) {
+        return 0;
+    }
+    nvm_write(&N_u2f.counter, &counter, sizeof(uint32_t));
+    return 1;
+}

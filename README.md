@@ -1,5 +1,5 @@
 # blue-app-u2f
-FIDO U2F Application for Ledger Blue 
+FIDO U2F Application for Ledger Blue and Nano S
 
 This application implements a U2F Authenticator for Ledger Blue - missing an integration guide and a few power management cleanups. 
 

@@ -15,7 +15,9 @@
 #  limitations under the License.
 #*******************************************************************************
 
-APPNAME = U2F 
+APPNAME = "Fido U2F" 
+TARGET_ID = 0x31100002 #Nano S
+#TARGET_ID = 0x31000002 #Blue
 
 ################
 # Default rule #
@@ -41,22 +43,34 @@ PROG     := token
 
 CONFIG_PRODUCTIONS := bin/$(PROG)
 
-SOURCE_PATH   := src $(BOLOS_SDK)/src src_usb 
+SOURCE_PATH   := src $(BOLOS_SDK)/src $(dir $(shell find $(BOLOS_SDK)/lib_stusb | grep "\.c$$")) src_bluenrg
 SOURCE_FILES  := $(foreach path, $(SOURCE_PATH),$(shell find $(path) | grep "\.c$$") )
-INCLUDES_PATH := src_usb $(dir $(shell find src_usb/ | grep "\.h$$")) include src $(BOLOS_SDK)/include $(BOLOS_SDK)/include/arm
+INCLUDES_PATH := $(dir $(shell find $(BOLOS_SDK)/lib_stusb | grep "\.h$$")) src_bluenrg $(dir $(shell find src_bluenrg/ | grep "\.h$$")) include src $(BOLOS_SDK)/include $(BOLOS_SDK)/include/arm 
 
 ### platform definitions
 DEFINES := ST31 gcc __IO=volatile
 
-DEFINES   += OS_IO_SEPROXYHAL IO_SEPROXYHAL_BUFFER_SIZE_B=300
-DEFINES   += HAVE_BAGL HAVE_PRINTF 
-DEFINES   += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=7 IO_HID_EP_LENGTH=64
-# Disable the generic SEproxyhal handling until the next version  
-DEFINES   += DISABLE_SEPROXYHAL_BLE_APDU
+#DEFINES   += HAVE_PRINTF PRINTF=screen_printf
+DEFINES   += PRINTF\(...\)=
+
+DEFINES   += OS_IO_SEPROXYHAL IO_SEPROXYHAL_BUFFER_SIZE_B=128
+DEFINES   += HAVE_BAGL
+DEFINES   += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=6 IO_HID_EP_LENGTH=64
+DEFINES   += HAVE_BLE HAVE_BLUENRG HCI_READ_PACKET_NUM_MAX=3 BLUENRG_MS HCI_READ_PACKET_SIZE=72
+#DEFINES   += HAVE_BLE_APDU
 # Extra negative tests for interoperability tests
 DEFINES	  += HAVE_TEST_INTEROP
 # Derive on the same path as Johoe, disabled for speed (500 ms BLE timeout enforced)  
 #DEFINES   += DERIVE_JOHOE
+# Vierzon production U2F Token for probers
+#DEFINES   += HAVE_VID_PID_PROBER HAVE_NO_USER_PRESENCE_CHECK
+
+DEFINES   += USB_SEGMENT_SIZE=64
+DEFINES   += BLE_SEGMENT_SIZE=32 #max MTU, min 20
+DEFINES   += U2F_MAX_MESSAGE_SIZE=768
+DEFINES   += UNUSED\(x\)=\(void\)x
+
+DEFINES   += TARGET_ID=$(TARGET_ID)
 
 ##############
 # Compiler #
@@ -67,7 +81,7 @@ CC       := $(CLANGPATH)/clang
 
 CFLAGS   := 
 CFLAGS   += -gdwarf-2  -gstrict-dwarf 
-CFLAGS   += -O0
+#CFLAGS   += -O0
 #CFLAGS   += -O0 -g3
 #CFLAGS   += -O3 -Os
 CFLAGS   += -mcpu=cortex-m0 -mthumb 
@@ -128,10 +142,10 @@ log = $(if $(strip $(VERBOSE)),$1,@$1)
 default: prepare bin/$(PROG)
 
 load: 
-	python -m ledgerblue.loadApp --fileName bin/$(PROG).hex --appName $(APPNAME)
+	python -m ledgerblue.loadApp --targetId $(TARGET_ID) --fileName bin/$(PROG).hex --appName $(APPNAME) --icon `python $(BOLOS_SDK)/icon.py 16 16 icon.gif hexbitmaponly` --path "5583430'" --apdu
 
 delete:
-	python -m ledgerblue.deleteApp --appName $(APPNAME)
+	python -m ledgerblue.deleteApp --targetId $(TARGET_ID) --appName $(APPNAME)
 
 bin/$(PROG): $(OBJECT_FILES) script.ld
 	@echo "[LINK] 	$@"

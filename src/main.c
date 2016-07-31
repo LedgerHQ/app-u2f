@@ -31,52 +31,23 @@
 extern u2f_config_t const WIDE N_u2f;
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
-#if defined(HAVE_BAGL)
-
 void u2f_reset_display(void);
 
 #define MAX_PIN 32
 
-volatile unsigned char uiDoneAfterDraw;
-volatile unsigned char uiDone;
-volatile unsigned int current_element;
-volatile bagl_element_t *active_screen;
-volatile unsigned int active_screen_element_count;
-volatile unsigned char display_changed;
-volatile enum {
-    BAGL_U2F_IDLE,
-    BAGL_U2F_VERIFY,
-} u2f_ui_mode = BAGL_U2F_IDLE;
+ux_state_t ux;
 
 volatile char verifyName[20];
-
-#define U2F_MAX_MESSAGE_SIZE 1100 // fits a 1024 bytes payload
 
 volatile u2f_service_t u2fService;
 volatile unsigned char u2fInputBuffer[64];
 volatile unsigned char u2fOutputBuffer[64];
 volatile unsigned char u2fMessageBuffer[U2F_MAX_MESSAGE_SIZE];
 volatile unsigned char u2fConfirmedApplicationParameter[32];
-volatile unsigned char u2fReportAcceptedStatus;
-volatile unsigned char u2fAcceptedStatus;
-volatile unsigned char u2fPendingResetDisplay;
 
 #ifdef HAVE_TEST_INTEROP
 volatile unsigned char deviceState[10];
 #endif
-
-const bagl_element_t bagl_ui_erase_all[] = {
-    {{BAGL_RECTANGLE, 0x00, 0, 0, 320, 480, 0, 0, BAGL_FILL, 0xf9f9f9, 0xf9f9f9,
-      0, 0},
-     NULL,
-     0,
-     0,
-     0,
-     NULL,
-     NULL,
-     NULL},
-
-};
 
 unsigned int u2f_callback_exit(const bagl_element_t *element);
 unsigned int u2f_callback_cancel(const bagl_element_t *element);
@@ -87,9 +58,48 @@ unsigned int u2f_callback_bad_enroll(const bagl_element_t *element);
 unsigned int u2f_callback_bad_authenticate(const bagl_element_t *element);
 #endif
 
+// display stepped screens
+unsigned int ux_step;
+unsigned int ux_step_count;
+unsigned int ui_stepper_prepro(const bagl_element_t *element) {
+    if (element->component.userid > 0) {
+        switch (element->component.userid) {
+        case 1:
+            io_seproxyhal_setup_ticker(2000);
+            break;
+        case 2:
+            io_seproxyhal_setup_ticker(3000);
+            break;
+        }
+        return (ux_step == element->component.userid - 1);
+    }
+    return 1;
+}
+
+const unsigned char hex_digits[] = {'0', '1', '2', '3', '4', '5', '6', '7',
+                                    '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+
+void array_hexstr(char *strbuf, const void *bin, unsigned int len) {
+    while (len--) {
+        *strbuf++ = hex_digits[((*((char *)bin)) >> 4) & 0xF];
+        *strbuf++ = hex_digits[(*((char *)bin)) & 0xF];
+        bin = (const void *)((unsigned int)bin + 1);
+    }
+    *strbuf = 0; // EOS
+}
+
 // TODO : add advertise button
 
-const bagl_element_t bagl_ui_idle[] = {
+const bagl_element_t ui_idle_blue[] = {
+    {{BAGL_RECTANGLE, 0x00, 0, 0, 320, 480, 0, 0, BAGL_FILL, 0xf9f9f9, 0xf9f9f9,
+      0, 0},
+     NULL,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
 
     // type                                 id    x    y    w    h    s  r  fill
     // fg        bg        font icon   text, out, over, touch
@@ -185,7 +195,21 @@ const bagl_element_t bagl_ui_idle[] = {
 
 };
 
-const bagl_element_t bagl_ui_verify[] = {
+unsigned int ui_idle_blue_button(unsigned int button_mask,
+                                 unsigned int button_mask_counter) {
+}
+
+const bagl_element_t ui_verify_blue[] = {
+    {{BAGL_RECTANGLE, 0x00, 0, 0, 320, 480, 0, 0, BAGL_FILL, 0xf9f9f9, 0xf9f9f9,
+      0, 0},
+     NULL,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+
     // type                                 id    x    y    w    h    s  r  fill
     // fg        bg        font icon   text, out, over, touch
     {{BAGL_RECTANGLE, 0x00, 0, 0, 320, 60, 0, 0, BAGL_FILL, 0x1d2028, 0x1d2028,
@@ -252,53 +276,355 @@ const bagl_element_t bagl_ui_verify[] = {
      NULL},
 };
 
-#endif
+unsigned int ui_verify_blue_button(unsigned int button_mask,
+                                   unsigned int button_mask_counter) {
+}
+
+const bagl_element_t ui_idle_nanos[] = {
+    // type                               userid    x    y   w    h  str rad
+    // fill      fg        bg      fid iid  txt   touchparams...       ]
+    {{BAGL_RECTANGLE, 0x00, 0, 0, 128, 32, 0, 0, BAGL_FILL, 0x000000, 0xFFFFFF,
+      0, 0},
+     NULL,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+
+    {{BAGL_ICON, 0x01, 22, 9, 14, 14, 0, 0, 0, 0xFFFFFF, 0x000000, 0,
+      BAGL_GLYPH_ICON_PEOPLE_BADGE},
+     NULL,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+    {{BAGL_LABELINE, 0x01, 43, 12, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
+      BAGL_FONT_OPEN_SANS_REGULAR_11px, 0},
+     "Ready to",
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+    {{BAGL_LABELINE, 0x01, 43, 26, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
+      BAGL_FONT_OPEN_SANS_REGULAR_11px, 0},
+     "authenticate",
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+    {{BAGL_ICON, 0x01, 118, 14, 7, 4, 0, 0, 0, 0xFFFFFF, 0x000000, 0,
+      BAGL_GLYPH_ICON_DOWN},
+     NULL,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+
+    {{BAGL_ICON, 0x02, 29, 9, 14, 14, 0, 0, 0, 0xFFFFFF, 0x000000, 0,
+      BAGL_GLYPH_ICON_DASHBOARD_BADGE},
+     NULL,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+    //{{BAGL_LABELINE                       , 0x02,   0,   3, 128,  32, 0, 0, 0
+    //, 0xFFFFFF, 0x000000,
+    //BAGL_FONT_OPEN_SANS_REGULAR_11px|BAGL_FONT_ALIGNMENT_CENTER, 0  },
+    //"authenticate", 0, 0, 0, NULL, NULL, NULL },
+    {{BAGL_LABELINE, 0x02, 50, 19, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
+      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px, 0},
+     "Quit app",
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+    {{BAGL_ICON, 0x02, 3, 14, 7, 4, 0, 0, 0, 0xFFFFFF, 0x000000, 0,
+      BAGL_GLYPH_ICON_UP},
+     NULL,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+};
+unsigned int ui_idle_nanos_button(unsigned int button_mask,
+                                  unsigned int button_mask_counter);
+
+unsigned int ui_idle_nanos_state;
+unsigned int ui_idle_nanos_prepro(const bagl_element_t *element) {
+    if (element->component.userid > 0) {
+        return (ui_idle_nanos_state == element->component.userid - 1);
+    }
+    return 1;
+}
+
+const bagl_element_t ui_register_nanos[] = {
+    // type                               userid    x    y   w    h  str rad
+    // fill      fg        bg      fid iid  txt   touchparams...       ]
+    {{BAGL_RECTANGLE, 0x00, 0, 0, 128, 32, 0, 0, BAGL_FILL, 0x000000, 0xFFFFFF,
+      0, 0},
+     NULL,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+
+    {{BAGL_ICON, 0x01, 20, 9, 14, 14, 0, 0, 0, 0xFFFFFF, 0x000000, 0,
+      BAGL_GLYPH_ICON_LOCK_BADGE},
+     NULL,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+    {{BAGL_LABELINE, 0x01, 41, 12, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
+      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px, 0},
+     "Confirm",
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+    {{BAGL_LABELINE, 0x01, 41, 26, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
+      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px, 0},
+     "registration",
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+
+    {{BAGL_LABELINE, 0x02, 0, 12, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
+      BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
+     "Service",
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+    {{BAGL_LABELINE, 0x02, 0, 26, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
+      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
+     verifyName,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+    //{{BAGL_LABELINE                       , 0x02,   0,  26, 128,  32, 0, 0, 0
+    //, 0xFFFFFF, 0x000000,
+    //BAGL_FONT_OPEN_SANS_REGULAR_11px|BAGL_FONT_ALIGNMENT_CENTER, 0  },
+    //verifyName, 0, 0, 0, NULL, NULL, NULL },
+
+    {{BAGL_ICON, 0x00, 3, 12, 7, 7, 0, 0, 0, 0xFFFFFF, 0x000000, 0,
+      BAGL_GLYPH_ICON_CROSS},
+     NULL,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+    {{BAGL_ICON, 0x00, 117, 13, 8, 6, 0, 0, 0, 0xFFFFFF, 0x000000, 0,
+      BAGL_GLYPH_ICON_CHECK},
+     NULL,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+};
+
+unsigned int ui_register_nanos_button(unsigned int button_mask,
+                                      unsigned int button_mask_counter);
+
+const bagl_element_t ui_auth_nanos[] = {
+    // type                               userid    x    y   w    h  str rad
+    // fill      fg        bg      fid iid  txt   touchparams...       ]
+    {{BAGL_RECTANGLE, 0x00, 0, 0, 128, 32, 0, 0, BAGL_FILL, 0x000000, 0xFFFFFF,
+      0, 0},
+     NULL,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+
+    {{BAGL_ICON, 0x01, 32, 9, 14, 14, 0, 0, 0, 0xFFFFFF, 0x000000, 0,
+      BAGL_GLYPH_ICON_LOCK_BADGE},
+     NULL,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+    {{BAGL_LABELINE, 0x01, 53, 12, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
+      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px, 0},
+     "Confirm",
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+    {{BAGL_LABELINE, 0x01, 53, 26, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
+      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px, 0},
+     "log in",
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+
+    {{BAGL_LABELINE, 0x02, 0, 12, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
+      BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
+     "Service",
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+    {{BAGL_LABELINE, 0x02, 0, 26, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
+      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
+     verifyName,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+
+    {{BAGL_ICON, 0x00, 3, 12, 7, 7, 0, 0, 0, 0xFFFFFF, 0x000000, 0,
+      BAGL_GLYPH_ICON_CROSS},
+     NULL,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+    {{BAGL_ICON, 0x00, 117, 13, 8, 6, 0, 0, 0, 0xFFFFFF, 0x000000, 0,
+      BAGL_GLYPH_ICON_CHECK},
+     NULL,
+     0,
+     0,
+     0,
+     NULL,
+     NULL,
+     NULL},
+};
+
+// unsigned int ui_auth_nanos_button(unsigned int button_mask, unsigned int
+// button_mask_counter);
+
+void ui_idle(void) {
+    ux_step_count = 0; // avoid redisplay
+    if (os_seph_features() &
+        SEPROXYHAL_TAG_SESSION_START_EVENT_FEATURE_SCREEN_BIG) {
+        if (ux.elements != ui_idle_blue) {
+            UX_DISPLAY(ui_idle_blue, NULL);
+        }
+    } else {
+        if (ux.elements != ui_idle_nanos) {
+            ui_idle_nanos_state =
+                0; // start by displaying the idle first screen
+            UX_DISPLAY(ui_idle_nanos, ui_idle_nanos_prepro);
+        }
+    }
+}
 
 // Main application
 
-#ifdef HAVE_BAGL
-
 void io_seproxyhal_display(const bagl_element_t *e) {
     io_seproxyhal_display_default(e);
-    display_changed = 1;
-}
-
-void display_init(void) {
-    uiDone = 0;
-    uiDoneAfterDraw = 0;
-    display_changed = 0;
-}
-
-void displayHome() {
-    u2f_ui_mode = BAGL_U2F_IDLE;
-    current_element = 0;
-    active_screen_element_count = sizeof(bagl_ui_idle) / sizeof(bagl_element_t);
-    active_screen = bagl_ui_idle;
-    io_seproxyhal_display(&bagl_ui_erase_all[0]);
 }
 
 unsigned int u2f_callback_exit(const bagl_element_t *element) {
-    /*
-    G_io_seproxyhal_spi_buffer[0] = SEPROXYHAL_TAG_DEVICE_OFF;
-    G_io_seproxyhal_spi_buffer[1] = 0;
-    G_io_seproxyhal_spi_buffer[2] = 0;
-    io_seproxyhal_spi_send(G_io_seproxyhal_spi_buffer, 3);
-    */
     u2f_timer_cancel();
     os_sched_exit(0);
     return 0;
 }
 unsigned int u2f_callback_cancel(const bagl_element_t *element) {
-    u2fService.reportUserPresence = true;
-    u2fService.userPresence = false;
-    displayHome();
+    u2f_confirm_user_presence(&u2fService, false, false);
+    // io_seproxyhal_setup_ticker(0);
+    u2f_reset_display();
     return 0; // DO NOT REDISPLAY THE BUTTON
 }
 unsigned int u2f_callback_confirm(const bagl_element_t *element) {
-    u2fService.reportUserPresence = true;
-    u2fService.userPresence = true;
-    displayHome();
+#warning TODO the second parameter shall be processed by the u2f layer instead
+    u2f_confirm_user_presence(&u2fService, true,
+                              u2fService.transportMedia == U2F_MEDIA_BLE);
+    // io_seproxyhal_setup_ticker(0);
+    u2f_reset_display();
     return 0; // DO NOT REDISPLAY THE BUTTON
+}
+
+unsigned int ui_idle_nanos_button(unsigned int button_mask,
+                                  unsigned int button_mask_counter) {
+    switch (button_mask) {
+    case BUTTON_EVT_RELEASED | BUTTON_LEFT: // UP
+        if (ui_idle_nanos_state == 1) {
+            ui_idle_nanos_state = 0;
+            UX_DISPLAY(ui_idle_nanos, ui_idle_nanos_prepro);
+        }
+        break;
+
+    case BUTTON_EVT_RELEASED | BUTTON_RIGHT: // DOWN
+        if (ui_idle_nanos_state == 0) {
+            ui_idle_nanos_state = 1;
+            UX_DISPLAY(ui_idle_nanos, ui_idle_nanos_prepro);
+        }
+        break;
+
+    case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT: // EXIT
+        if (ui_idle_nanos_state == 1) {
+            u2f_callback_exit(NULL);
+        }
+        break;
+    }
+    return 0;
+}
+
+// the same for both
+#define ui_auth_nanos_button ui_register_nanos_button
+unsigned int ui_register_nanos_button(unsigned int button_mask,
+                                      unsigned int button_mask_counter) {
+    switch (button_mask) {
+    case BUTTON_EVT_RELEASED | BUTTON_LEFT: // NO
+        u2f_callback_cancel(NULL);
+        break;
+
+    case BUTTON_EVT_RELEASED | BUTTON_RIGHT: // YES
+        u2f_callback_confirm(NULL);
+        break;
+    }
+    return 0;
 }
 
 #ifdef HAVE_TEST_INTEROP
@@ -330,7 +656,7 @@ unsigned int u2f_callback_bad_enroll(const bagl_element_t *element) {
     u2f_crypto_set_modifier(modifier ^
                             U2F_CRYPTO_TEST_WRONG_REGISTER_SIGNATURE);
     getDeviceState();
-    displayHome();
+    u2f_reset_display();
     return 0; // DO NOT REDISPLAY THE BUTTON
 }
 
@@ -339,268 +665,188 @@ unsigned int u2f_callback_bad_authenticate(const bagl_element_t *element) {
     u2f_crypto_set_modifier(modifier ^
                             U2F_CRYPTO_TEST_WRONG_AUTHENTICATE_SIGNATURE);
     getDeviceState();
-    displayHome();
+    u2f_reset_display();
     return 0; // DO NOT REDISPLAY THE BUTTON
 }
 
 #endif
 
-#endif
-
-unsigned int usb_enable_request;
-unsigned int timer_enable_request;
 unsigned char io_event(unsigned char channel) {
-    // nothing done with the event, throw an error on the transport layer if
-    // needed
-    unsigned int offset = 0;
-
-    // just reply "amen"
-    // add a "pairing ok" tag if necessary
     // can't have more than one tag in the reply, not supported yet.
     switch (G_io_seproxyhal_spi_buffer[0]) {
-    case SEPROXYHAL_TAG_BLE_PAIRING_ATTEMPT_EVENT:
-        G_io_seproxyhal_spi_buffer[offset++] = SEPROXYHAL_TAG_PAIRING_STATUS;
-        G_io_seproxyhal_spi_buffer[offset++] = 0;
-        G_io_seproxyhal_spi_buffer[offset++] = 1;
-        G_io_seproxyhal_spi_buffer[offset++] = 1;
-        io_seproxyhal_spi_send(G_io_seproxyhal_spi_buffer, offset);
-        break;
-
-    // Make automatically discoverable again when disconnected
-
-    case SEPROXYHAL_TAG_BLE_CONNECTION_EVENT:
-        if (G_io_seproxyhal_spi_buffer[3] == 0) {
-            // TODO : cleaner reset sequence
-            // first disable BLE before turning it off
-            G_io_seproxyhal_spi_buffer[0] = SEPROXYHAL_TAG_BLE_RADIO_POWER;
-            G_io_seproxyhal_spi_buffer[1] = 0;
-            G_io_seproxyhal_spi_buffer[2] = 1;
-            G_io_seproxyhal_spi_buffer[3] = 0;
-            io_seproxyhal_spi_send(G_io_seproxyhal_spi_buffer, 4);
-            // send BLE power on (default parameters)
-            G_io_seproxyhal_spi_buffer[0] = SEPROXYHAL_TAG_BLE_RADIO_POWER;
-            G_io_seproxyhal_spi_buffer[1] = 0;
-            G_io_seproxyhal_spi_buffer[2] = 2;
-            G_io_seproxyhal_spi_buffer[3] = 3; // ble on & advertise
-            G_io_seproxyhal_spi_buffer[4] = 1; // use U2F profile
-            io_seproxyhal_spi_send(G_io_seproxyhal_spi_buffer, 5);
-        }
-        goto general_status;
-
-    // Override regular APDU logic for BLE events
-
-    case SEPROXYHAL_TAG_BLE_WRITE_REQUEST_EVENT:
-        u2f_transport_handle(
-            &u2fService, G_io_seproxyhal_spi_buffer + 6,
-            U2(G_io_seproxyhal_spi_buffer[4], G_io_seproxyhal_spi_buffer[5]),
-            U2F_MEDIA_BLE);
-        if (u2fService.transportState == U2F_HANDLE_SEGMENTED) {
-            goto general_status;
-        }
-        break;
-
-    case SEPROXYHAL_TAG_BLE_NOTIFY_INDICATE_EVENT:
-        // Last BLE send acknowledged, move on if there's something new to
-        // process
-        if ((u2fService.sendLength == 0) ||
-            (u2fService.sendOffset == u2fService.sendLength)) {
-            goto general_status;
-        }
-        u2f_continue_sending_fragmented_response(&u2fService);
-        break;
-
-#ifdef HAVE_BAGL
     case SEPROXYHAL_TAG_FINGER_EVENT:
-        // TOUCH & RELEASE
-        display_changed = 0; // detect screen display requests, to determine if
-                             // general status is required or not
-        io_seproxyhal_touch(active_screen, active_screen_element_count,
-                            (G_io_seproxyhal_spi_buffer[4] << 8) |
-                                (G_io_seproxyhal_spi_buffer[5] & 0xFF),
-                            (G_io_seproxyhal_spi_buffer[6] << 8) |
-                                (G_io_seproxyhal_spi_buffer[7] & 0xFF),
-                            // map events
-                            G_io_seproxyhal_spi_buffer[3]);
-        if (!display_changed) {
-            goto general_status;
-        }
+        UX_FINGER_EVENT(G_io_seproxyhal_spi_buffer);
         break;
-#endif // HAVE_BAGL
 
-    case SEPROXYHAL_TAG_SESSION_START_EVENT:
-        // send BLE power on (default parameters)
-        G_io_seproxyhal_spi_buffer[0] = SEPROXYHAL_TAG_BLE_RADIO_POWER;
-        G_io_seproxyhal_spi_buffer[1] = 0;
-        G_io_seproxyhal_spi_buffer[2] = 2;
-        G_io_seproxyhal_spi_buffer[3] = 3; // ble on & advertise
-        G_io_seproxyhal_spi_buffer[4] = 1; // use U2F profile
-        io_seproxyhal_spi_send(G_io_seproxyhal_spi_buffer, 5);
-
-        // request usb startup after display done
-        usb_enable_request = 1;
-        timer_enable_request = 1;
-
-#ifdef HAVE_BAGL
-
-        display_init();
-
-        displayHome();
-
-        // goto general_status;
+    case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT:
+        UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
         break;
-#else
-        // finished warming up
-        goto general_status;
-#endif // HAVE_BAGL
 
     case SEPROXYHAL_TAG_TICKER_EVENT:
         if (u2fService.timeoutFunction != NULL) {
-            u2fService.timerNeedGeneralStatus = false;
             u2fService.timeoutFunction(&u2fService);
-            if (u2fService.timerNeedGeneralStatus) {
-                goto general_status;
-            }
+        }
+        // only redisplay if timeout has done nothing
+        if (!io_seproxyhal_spi_is_status_sent() && ux_step_count > 0) {
+            // prepare next screen
+            ux_step = (ux_step + 1) % ux_step_count;
+            // redisplay screen
+            UX_REDISPLAY();
         }
         break;
 
     case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
-        if (current_element < active_screen_element_count) {
-            // continue displaying element if any to be processed again
-            io_seproxyhal_display(&active_screen[current_element++]);
-            break;
+        if (UX_DISPLAYED()) {
+            // TODO perform actions after all screen elements have been
+            // displayed
+        } else {
+            UX_DISPLAY_PROCESSED_EVENT();
         }
-#ifdef HAVE_IO_USB
-        if (usb_enable_request) {
-            // enable usb support
-            io_usb_enable(1);
-
-            usb_enable_request = 0;
-        }
-#endif // HAVE_IO_USB
-        if (uiDoneAfterDraw) {
-            // Top level handle the general status along with the APDU response
-            uiDoneAfterDraw = 0;
-            uiDone = 1;
-            break;
-        }
-        if (u2fService.reportUserPresence) {
-            bool resume = (u2fService.userPresence &&
-                           (u2fService.transportMedia == U2F_MEDIA_BLE));
-            u2fService.reportUserPresence = false;
-            u2f_confirm_user_presence(&u2fService, u2fService.userPresence,
-                                      resume);
-            if (resume) {
-                break;
-            }
-        }
-        if (timer_enable_request) {
-            timer_enable_request = 0;
-            u2f_timer_register(u2fService.timerInterval,
-                               u2fService.timeoutFunction);
-        }
-    // no break is intentional: always a general status after display event
+        break;
 
     default:
-    general_status:
-        // send a general status last command
-        offset = 0;
-        G_io_seproxyhal_spi_buffer[offset++] = SEPROXYHAL_TAG_GENERAL_STATUS;
-        G_io_seproxyhal_spi_buffer[offset++] = 0;
-        G_io_seproxyhal_spi_buffer[offset++] = 2;
-        G_io_seproxyhal_spi_buffer[offset++] =
-            SEPROXYHAL_TAG_GENERAL_STATUS_LAST_COMMAND >> 8;
-        G_io_seproxyhal_spi_buffer[offset++] =
-            SEPROXYHAL_TAG_GENERAL_STATUS_LAST_COMMAND;
-        io_seproxyhal_spi_send(G_io_seproxyhal_spi_buffer, offset);
+        break;
+    }
+
+    // close the event if not done previously (by a display or whatever)
+    if (!io_seproxyhal_spi_is_status_sent()) {
+        io_seproxyhal_general_status();
     }
 
     // command has been processed, DO NOT reset the current APDU transport
     return 1;
 }
 
+typedef struct {
+    unsigned char sha256[32];
+    const char *name;
+} u2f_known_appid_t;
+const u2f_known_appid_t const u2f_known_appid[] = {
+    {
+        // https://www.gstatic.com/securitykey/origins.json
+        {0xa5, 0x46, 0x72, 0xb2, 0x22, 0xc4, 0xcf, 0x95, 0xe1, 0x51, 0xed, 0x8d,
+         0x4d, 0x3c, 0x76, 0x7a, 0x6c, 0xc3, 0x49, 0x43, 0x59, 0x43, 0x79, 0x4e,
+         0x88, 0x4f, 0x3d, 0x02, 0x3a, 0x82, 0x29, 0xfd},
+        "Google",
+    },
+    {
+        // https://www.dropbox.com/u2f-app-id.json
+        {0xc5, 0x0f, 0x8a, 0x7b, 0x70, 0x8e, 0x92, 0xf8, 0x2e, 0x7a, 0x50, 0xe2,
+         0xbd, 0xc5, 0x5d, 0x8f, 0xd9, 0x1a, 0x22, 0xfe, 0x6b, 0x29, 0xc0, 0xcd,
+         0xf7, 0x80, 0x55, 0x30, 0x84, 0x2a, 0xf5, 0x81},
+        "Dropbox",
+    },
+    {
+        // https://github.com/u2f/trusted_facets
+        {0x70, 0x61, 0x7d, 0xfe, 0xd0, 0x65, 0x86, 0x3a, 0xf4, 0x7c, 0x15, 0x55,
+         0x6c, 0x91, 0x79, 0x88, 0x80, 0x82, 0x8c, 0xc4, 0x07, 0xfd, 0xf7, 0x0a,
+         0xe8, 0x50, 0x11, 0x56, 0x94, 0x65, 0xa0, 0x75},
+        "GitHub",
+    },
+    {
+        // https://gitlab.com
+        {0xe7, 0xbe, 0x96, 0xa5, 0x1b, 0xd0, 0x19, 0x2a, 0x72, 0x84, 0x0d, 0x2e,
+         0x59, 0x09, 0xf7, 0x2b, 0xa8, 0x2a, 0x2f, 0xe9, 0x3f, 0xaa, 0x62, 0x4f,
+         0x03, 0x39, 0x6b, 0x30, 0xe4, 0x94, 0xc8, 0x04},
+        "GitLab",
+    },
+    {
+        // https://bitbucket.org
+        {0x12, 0x74, 0x3b, 0x92, 0x12, 0x97, 0xb7, 0x7f, 0x11, 0x35, 0xe4, 0x1f,
+         0xde, 0xdd, 0x4a, 0x84, 0x6a, 0xfe, 0x82, 0xe1, 0xf3, 0x69, 0x32, 0xa9,
+         0x91, 0x2f, 0x3b, 0x0d, 0x8d, 0xfb, 0x7d, 0x0e},
+        "Bitbucket",
+    },
+
+    {
+        {0x68, 0x20, 0x19, 0x15, 0xd7, 0x4c, 0xb4, 0x2a, 0xf5, 0xb3, 0xcc, 0x5c,
+         0x95, 0xb9, 0x55, 0x3e, 0x3e, 0x3a, 0x83, 0xb4, 0xd2, 0xa9, 0x3b, 0x45,
+         0xfb, 0xad, 0xaa, 0x84, 0x69, 0xff, 0x8e, 0x6e},
+        "Dashlane",
+    },
+};
+
+const char *u2f_match_known_appid(const uint8_t *applicationParameter) {
+    unsigned int i;
+    for (i = 0; i < sizeof(u2f_known_appid) / sizeof(u2f_known_appid[0]); i++) {
+        if (os_memcmp(applicationParameter, u2f_known_appid[i].sha256, 32) ==
+            0) {
+            return (const char *)PIC(u2f_known_appid[i].name);
+        }
+    }
+    return NULL;
+}
+
+#define HASH_LENGTH 4
 void u2f_prompt_user_presence(u2f_service_t *service, bool enroll,
                               uint8_t *applicationParameter) {
+#ifdef HAVE_NO_USER_PRESENCE_CHECK
+#warning Having no user presence check is against U2F standard
+    u2f_callback_confirm(NULL);
+#else
     if (enroll) {
-        os_memmove(verifyName, "Enroll", 7);
+        // os_memmove(verifyName, "Enroll", 7);
     } else {
-        os_memmove(verifyName, "Authenticate", 13);
+        // os_memmove(verifyName, "Authenticate", 13);
     }
-    uiDone = 0;
-    uiDoneAfterDraw = 1;
-    u2f_ui_mode = BAGL_U2F_VERIFY;
-    current_element = 0;
-    u2fReportAcceptedStatus = 0;
-    u2fPendingResetDisplay = 0;
-    active_screen_element_count =
-        sizeof(bagl_ui_verify) / sizeof(bagl_element_t);
-    active_screen = bagl_ui_verify;
-    io_seproxyhal_display(&bagl_ui_erase_all[0]);
-    // Loop on the UI, general status will be sent when all components are
-    // displayed
-    while (!uiDone) {
-        unsigned int rx_len;
-        rx_len = io_seproxyhal_spi_recv(G_io_seproxyhal_spi_buffer,
-                                        sizeof(G_io_seproxyhal_spi_buffer), 0);
-        if (rx_len - 3 !=
-            U2(G_io_seproxyhal_spi_buffer[1], G_io_seproxyhal_spi_buffer[2])) {
-            continue;
+
+    const uint8_t *name = u2f_match_known_appid(applicationParameter);
+    if (name != NULL) {
+        strcpy(verifyName, name);
+    } else {
+        array_hexstr(verifyName, applicationParameter, HASH_LENGTH / 2);
+        verifyName[HASH_LENGTH / 2 * 2] = '.';
+        verifyName[HASH_LENGTH / 2 * 2 + 1] = '.';
+        verifyName[HASH_LENGTH / 2 * 2 + 2] = '.';
+        array_hexstr(verifyName + HASH_LENGTH / 2 * 2 + 3,
+                     applicationParameter + 32 - HASH_LENGTH / 2,
+                     HASH_LENGTH / 2);
+    }
+
+    if (os_seph_features() &
+        SEPROXYHAL_TAG_SESSION_START_EVENT_FEATURE_SCREEN_BIG) {
+        UX_DISPLAY(ui_verify_blue, NULL);
+    } else {
+        ux_step = 0;
+        ux_step_count = 2;
+        io_seproxyhal_setup_ticker(2000);
+        if (enroll) {
+            UX_DISPLAY(ui_register_nanos, ui_stepper_prepro);
+        } else {
+            UX_DISPLAY(ui_auth_nanos, ui_stepper_prepro);
         }
-        io_event(CHANNEL_SPI);
     }
+#endif
 }
 
 void u2f_reset_display() {
-    if (u2fPendingResetDisplay) {
-        u2fPendingResetDisplay = 0;
-        uiDone = 0;
-        uiDoneAfterDraw = 1;
-        displayHome();
-        // Loop on the UI, general status will be sent when all components are
-        // displayed
-        while (!uiDone) {
-            unsigned int rx_len;
-            rx_len =
-                io_seproxyhal_spi_recv(G_io_seproxyhal_spi_buffer,
-                                       sizeof(G_io_seproxyhal_spi_buffer), 0);
-            if (rx_len - 3 != U2(G_io_seproxyhal_spi_buffer[1],
-                                 G_io_seproxyhal_spi_buffer[2])) {
-                continue;
-            }
-            io_event(CHANNEL_SPI);
-        }
-    }
-}
-
-void reset(void) {
+    ui_idle();
 }
 
 unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
-    switch (channel & ~(IO_FLAGS)) {
-    case CHANNEL_KEYBOARD:
-        break;
-
-    // multiplexed io exchange over a SPI channel and TLV encapsulated protocol
-    case CHANNEL_SPI:
-        if (tx_len) {
-            io_seproxyhal_spi_send(G_io_apdu_buffer, tx_len);
-
-            if (channel & IO_RESET_AFTER_REPLIED) {
-                reset();
-            }
-            return 0; // nothing received from the master so far (it's a tx
-                      // transaction)
-        } else {
-            return io_seproxyhal_spi_recv(G_io_apdu_buffer,
-                                          sizeof(G_io_apdu_buffer), 0);
-        }
-
-    default:
+    {
         THROW(INVALID_PARAMETER);
     }
     return 0;
 }
 
-void main_continue(void) {
+void app_exit(void) {
+    BEGIN_TRY_L(exit) {
+        TRY_L(exit) {
+            os_sched_exit(-1);
+        }
+        FINALLY_L(exit) {
+        }
+    }
+    END_TRY_L(exit);
+}
+
+__attribute__((section(".boot"))) void main(void) {
+    // exit critical section
+    __asm volatile("cpsie i");
+
+    UX_INIT();
+
     // ensure exception will work as planned
     os_boot();
 
@@ -608,34 +854,12 @@ void main_continue(void) {
         TRY {
             io_seproxyhal_init();
 
-            screen_printf("ST31_APP booted.\n");
-
-            // fake the session start event
-            G_io_seproxyhal_spi_buffer[0] = SEPROXYHAL_TAG_SESSION_START_EVENT;
-            G_io_seproxyhal_spi_buffer[1] = 0;
-            G_io_seproxyhal_spi_buffer[2] = 1;
-            G_io_seproxyhal_spi_buffer[3] = 0;
-            io_event(CHANNEL_SPI);
-
             // Initialize U2F service
-
-            if (N_u2f.initialized != 1) {
-                u2f_config_t u2fConfig;
-                u2fConfig.counter = 1;
-                u2fConfig.initialized = 1;
-#ifndef DERIVE_JOHOE
-                uint32_t keyPath[1];
-                keyPath[0] = U2F_KEY_PATH;
-                os_perso_derive_seed_bip32(keyPath, 1, u2fConfig.hmacKey,
-                                           u2fConfig.hmacKey + 32);
-#endif
-                nvm_write(&N_u2f, &u2fConfig, sizeof(u2f_config_t));
-            }
+            u2f_init_config();
 
             u2f_crypto_init();
             u2f_counter_init();
             u2f_timer_init();
-            u2fPendingResetDisplay = 0;
             os_memset((unsigned char *)&u2fService, 0, sizeof(u2fService));
             u2fService.promptUserPresenceFunction = u2f_prompt_user_presence;
             u2fService.inputBuffer = u2fInputBuffer;
@@ -647,32 +871,39 @@ void main_continue(void) {
             u2fService.bleMtu = 20;
             u2f_initialize_service(&u2fService);
 
+            if (os_seph_features() &
+                SEPROXYHAL_TAG_SESSION_START_EVENT_FEATURE_BLE) {
+                BLE_set_u2fServiceReference(&u2fService);
+                // screen_printf("BLE off\n");
+                BLE_power(0, NULL);
+
+                // restart IOs
+                BLE_power(1, NULL);
+            }
+
+            USB_power(1);
+
+            u2f_timer_register(u2fService.timerInterval,
+                               u2fService.timeoutFunction);
+
 #ifdef HAVE_TEST_INTEROP
             getDeviceState();
 #endif
 
-            // btchip_context_init();
-            // app_main();
+            ui_idle();
 
-            // Just loop on an exchange
-
+            // Just loop on an exchange, apdu are dispatched from within the io
+            // stack
             for (;;) {
                 io_exchange(CHANNEL_APDU, 0);
             }
         }
         CATCH_ALL {
-            for (;;)
-                ;
         }
         FINALLY {
         }
     }
     END_TRY;
-}
 
-__attribute__((section(".boot"))) void main(void) {
-    // exit critical section
-    __asm volatile("cpsie i");
-
-    main_continue();
+    app_exit();
 }
