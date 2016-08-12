@@ -22,7 +22,9 @@
 #include "os.h"
 #include "u2f_config.h"
 
-extern u2f_config_t const WIDE N_u2f;
+extern WIDE u2f_config_t N_u2f_real;
+
+#define N_u2f (*(WIDE u2f_config_t *)PIC(&N_u2f_real))
 
 void u2f_counter_init(void) {
 }

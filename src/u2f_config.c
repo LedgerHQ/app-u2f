@@ -20,7 +20,7 @@
 #include "os.h"
 #include "u2f_config.h"
 
-WIDE u2f_config_t const N_u2f;
+WIDE u2f_config_t N_u2f_real;
 
 void u2f_init_config(void) {
     if (N_u2f.initialized != 1) { // TODO use a magic here ?, well the memory is
@@ -31,8 +31,8 @@ void u2f_init_config(void) {
 #ifndef DERIVE_JOHOE
         uint32_t keyPath[1];
         keyPath[0] = U2F_KEY_PATH;
-        os_perso_derive_seed_bip32(keyPath, 1, u2fConfig.hmacKey,
-                                   u2fConfig.hmacKey + 32);
+        os_perso_derive_node_bip32(CX_CURVE_256R1, keyPath, 1,
+                                   u2fConfig.hmacKey, u2fConfig.hmacKey + 32);
 #endif
         nvm_write(&N_u2f, &u2fConfig, sizeof(u2f_config_t));
     }
@@ -44,8 +44,8 @@ void u2f_init_config(void) {
         uint32_t keyPath[1];
         os_memmove(&u2fConfig, &N_u2f, sizeof(u2f_config_t));
         keyPath[0] = U2F_KEY_PATH;
-        os_perso_derive_seed_bip32(keyPath, 1, u2fConfig.hmacKey,
-                                   u2fConfig.hmacKey + 32);
+        os_perso_derive_node_bip32(CX_CURVE_256R1, keyPath, 1,
+                                   u2fConfig.hmacKey, u2fConfig.hmacKey + 32);
         if (os_memcmp(u2fConfig.hmacKey, N_u2f.hmacKey,
                       sizeof(u2fConfig.hmacKey)) != 0) {
             nvm_write(N_u2f.hmacKey, u2fConfig.hmacKey,

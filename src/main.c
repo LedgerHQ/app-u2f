@@ -23,12 +23,13 @@
 #include "os_io_seproxyhal.h"
 #include "string.h"
 
+#include "u2f_io.h"
+
 #include "u2f_config.h"
 #include "u2f_service.h"
 #include "u2f_crypto.h"
 #include "u2f_counter.h"
 
-extern u2f_config_t const WIDE N_u2f;
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
 void u2f_reset_display(void);
@@ -809,7 +810,6 @@ void u2f_prompt_user_presence(u2f_service_t *service, bool enroll,
     } else {
         ux_step = 0;
         ux_step_count = 2;
-        io_seproxyhal_setup_ticker(2000);
         if (enroll) {
             UX_DISPLAY(ui_register_nanos, ui_stepper_prepro);
         } else {
@@ -845,65 +845,72 @@ __attribute__((section(".boot"))) void main(void) {
     // exit critical section
     __asm volatile("cpsie i");
 
-    UX_INIT();
-
     // ensure exception will work as planned
     os_boot();
 
-    BEGIN_TRY {
-        TRY {
-            io_seproxyhal_init();
+    for (;;) {
+        BEGIN_TRY {
+            TRY {
+                UX_INIT();
 
-            // Initialize U2F service
-            u2f_init_config();
+                io_seproxyhal_init();
 
-            u2f_crypto_init();
-            u2f_counter_init();
-            u2f_timer_init();
-            os_memset((unsigned char *)&u2fService, 0, sizeof(u2fService));
-            u2fService.promptUserPresenceFunction = u2f_prompt_user_presence;
-            u2fService.inputBuffer = u2fInputBuffer;
-            u2fService.outputBuffer = u2fOutputBuffer;
-            u2fService.messageBuffer = u2fMessageBuffer;
-            u2fService.messageBufferSize = U2F_MAX_MESSAGE_SIZE;
-            u2fService.confirmedApplicationParameter =
-                u2fConfirmedApplicationParameter;
-            u2fService.bleMtu = 20;
-            u2f_initialize_service(&u2fService);
+                // Initialize U2F service
+                u2f_init_config();
 
-            if (os_seph_features() &
-                SEPROXYHAL_TAG_SESSION_START_EVENT_FEATURE_BLE) {
-                BLE_set_u2fServiceReference(&u2fService);
-                // screen_printf("BLE off\n");
-                BLE_power(0, NULL);
+                u2f_crypto_init();
+                u2f_counter_init();
+                u2f_timer_init();
+                os_memset((unsigned char *)&u2fService, 0, sizeof(u2fService));
+                u2fService.promptUserPresenceFunction =
+                    u2f_prompt_user_presence;
+                u2fService.inputBuffer = u2fInputBuffer;
+                u2fService.outputBuffer = u2fOutputBuffer;
+                u2fService.messageBuffer = u2fMessageBuffer;
+                u2fService.messageBufferSize = U2F_MAX_MESSAGE_SIZE;
+                u2fService.confirmedApplicationParameter =
+                    u2fConfirmedApplicationParameter;
+                u2fService.bleMtu = 20;
+                u2f_initialize_service(&u2fService);
 
-                // restart IOs
-                BLE_power(1, NULL);
-            }
+                if (os_seph_features() &
+                    SEPROXYHAL_TAG_SESSION_START_EVENT_FEATURE_BLE) {
+                    BLE_set_u2fServiceReference(&u2fService);
+                    // screen_printf("BLE off\n");
+                    BLE_power(0, NULL);
 
-            USB_power(1);
+                    // restart IOs
+                    BLE_power(1, NULL);
+                }
 
-            u2f_timer_register(u2fService.timerInterval,
-                               u2fService.timeoutFunction);
+                USB_power(0); // ensure disconnecting pull before reconnecting
+                USB_power(1);
+
+                u2f_timer_register(u2fService.timerInterval,
+                                   u2fService.timeoutFunction);
 
 #ifdef HAVE_TEST_INTEROP
-            getDeviceState();
+                getDeviceState();
 #endif
+                ui_idle();
 
-            ui_idle();
-
-            // Just loop on an exchange, apdu are dispatched from within the io
-            // stack
-            for (;;) {
-                io_exchange(CHANNEL_APDU, 0);
+                // Just loop on an exchange, apdu are dispatched from within the
+                // io stack
+                for (;;) {
+                    io_exchange(CHANNEL_APDU, 0);
+                }
+            }
+            // catch BLE disconnect event
+            CATCH(EXCEPTION_DISCONNECT) {
+                continue;
+            }
+            CATCH_ALL {
+                app_exit();
+            }
+            FINALLY {
+                app_exit();
             }
         }
-        CATCH_ALL {
-        }
-        FINALLY {
-        }
+        END_TRY;
     }
-    END_TRY;
-
-    app_exit();
 }

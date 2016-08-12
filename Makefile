@@ -18,6 +18,7 @@
 APPNAME = "Fido U2F" 
 TARGET_ID = 0x31100002 #Nano S
 #TARGET_ID = 0x31000002 #Blue
+APP_LOAD_PARAMS=--path "5583430'" --curve prime256r1 --appFlags 0x40
 
 ################
 # Default rule #
@@ -43,9 +44,9 @@ PROG     := token
 
 CONFIG_PRODUCTIONS := bin/$(PROG)
 
-SOURCE_PATH   := src $(BOLOS_SDK)/src $(dir $(shell find $(BOLOS_SDK)/lib_stusb | grep "\.c$$")) src_bluenrg
+SOURCE_PATH   := src $(BOLOS_SDK)/src $(dir $(shell find $(BOLOS_SDK)/lib_stusb | grep "\.c$$")) $(dir $(shell find $(BOLOS_SDK)/lib_bluenrg | grep "\.c$$"))
 SOURCE_FILES  := $(foreach path, $(SOURCE_PATH),$(shell find $(path) | grep "\.c$$") )
-INCLUDES_PATH := $(dir $(shell find $(BOLOS_SDK)/lib_stusb | grep "\.h$$")) src_bluenrg $(dir $(shell find src_bluenrg/ | grep "\.h$$")) include src $(BOLOS_SDK)/include $(BOLOS_SDK)/include/arm 
+INCLUDES_PATH := $(dir $(shell find $(BOLOS_SDK)/lib_stusb | grep "\.h$$")) $(dir $(shell find $(BOLOS_SDK)/lib_bluenrg/ | grep "\.h$$")) include src $(BOLOS_SDK)/include $(BOLOS_SDK)/include/arm 
 
 ### platform definitions
 DEFINES := ST31 gcc __IO=volatile
@@ -83,7 +84,7 @@ CFLAGS   :=
 CFLAGS   += -gdwarf-2  -gstrict-dwarf 
 #CFLAGS   += -O0
 #CFLAGS   += -O0 -g3
-#CFLAGS   += -O3 -Os
+CFLAGS   += -O3 -Os
 CFLAGS   += -mcpu=cortex-m0 -mthumb 
 CFLAGS   += -fno-common -mtune=cortex-m0 -mlittle-endian 
 CFLAGS   += -std=gnu99 -Werror=int-to-pointer-cast -Wall -Wextra #-save-temps
@@ -111,7 +112,7 @@ LDFLAGS  += -fno-common -ffunction-sections -fdata-sections -fwhole-program -nos
 LDFLAGS  += -mno-unaligned-access
 #LDFLAGS  += -nodefaultlibs
 #LDFLAGS  += -nostdlib -nostdinc
-LDFLAGS  += -Tscript.ld  -Wl,--gc-sections -Wl,-Map,debug/$(PROG).map,--cref
+LDFLAGS  += -T$(BOLOS_SDK)/script.ld  -Wl,--gc-sections -Wl,-Map,debug/$(PROG).map,--cref
 LDLIBS   += -Wl,--library-path -Wl,$(GCCPATH)/../lib/armv6-m/
 #LDLIBS   += -Wl,--start-group 
 LDLIBS   += -lm -lgcc -lc 
@@ -142,12 +143,15 @@ log = $(if $(strip $(VERBOSE)),$1,@$1)
 default: prepare bin/$(PROG)
 
 load: 
-	python -m ledgerblue.loadApp --targetId $(TARGET_ID) --fileName bin/$(PROG).hex --appName $(APPNAME) --icon `python $(BOLOS_SDK)/icon.py 16 16 icon.gif hexbitmaponly` --path "5583430'" --apdu
+	python -m ledgerblue.loadApp --targetId $(TARGET_ID) --fileName bin/$(PROG).hex --appName $(APPNAME) --icon `python $(BOLOS_SDK)/icon.py 16 16 icon.gif hexbitmaponly` $(APP_LOAD_PARAMS) 
+
+load_release:
+	python -m ledgerblue.loadApp --targetId $(TARGET_ID) --fileName bin/$(PROG).hex --appName $(APPNAME) --icon `python $(BOLOS_SDK)/icon.py 16 16 icon.gif hexbitmaponly` $(APP_LOAD_PARAMS) --signature 304402203b82af418a7bcf2ad90e7fd1511c3e5b89ece1be339feb0d38b7b464bb89ec3702201d3a26dfad9f79949aeeefc6306fbb1fa815dd0cdac7241e5dd31c7dff8b5f1c
 
 delete:
 	python -m ledgerblue.deleteApp --targetId $(TARGET_ID) --appName $(APPNAME)
 
-bin/$(PROG): $(OBJECT_FILES) script.ld
+bin/$(PROG): $(OBJECT_FILES) $(BOLOS_SDK)/script.ld
 	@echo "[LINK] 	$@"
 	$(call log,$(call link_cmdline,$(OBJECT_FILES) $(LDLIBS),$@))
 	$(call log,$(GCCPATH)/arm-none-eabi-objcopy -O ihex -S bin/$(PROG) bin/$(PROG).hex)

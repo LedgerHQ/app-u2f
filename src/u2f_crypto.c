@@ -25,8 +25,6 @@
 #include "u2f_crypto.h"
 #include "u2f_crypto_data.h"
 
-extern u2f_config_t const WIDE N_u2f;
-
 cx_ecfp_private_key_t attestation_private_key;
 cx_ecfp_private_key_t app_private_key;
 cx_ecfp_public_key_t app_public_key;
@@ -94,8 +92,8 @@ uint16_t u2f_crypto_generate_key_and_wrap(const uint8_t *applicationParameter,
                       (tmp[2] << 8) | tmp[3];
     }
     os_memmove(keyHandle, &key_path[1], KEY_PATH_LEN);
-    os_perso_derive_seed_bip32(key_path, KEY_PATH_ENTRIES, privateKeyData,
-                               NULL);
+    os_perso_derive_node_bip32(CX_CURVE_256R1, key_path, KEY_PATH_ENTRIES,
+                               privateKeyData, NULL);
     cx_ecdsa_init_private_key(CX_CURVE_256R1, privateKeyData, 32,
                               &app_private_key);
     cx_ecdsa_init_public_key(CX_CURVE_256R1, NULL, 0, &app_public_key);
@@ -121,8 +119,8 @@ bool u2f_crypto_unwrap(const uint8_t *keyHandle, uint16_t keyHandleLength,
     }
     key_path[0] = U2F_KEY_PATH;
     os_memmove(&key_path[1], keyHandle, KEY_PATH_LEN);
-    os_perso_derive_seed_bip32(key_path, KEY_PATH_ENTRIES, privateKeyData,
-                               NULL);
+    os_perso_derive_node_bip32(CX_CURVE_256R1, key_path, KEY_PATH_ENTRIES,
+                               privateKeyData, NULL);
     cx_hmac_sha256_init(&hmac, privateKeyData, sizeof(privateKeyData));
     cx_hmac(&hmac, 0, applicationParameter, 32, mac);
     cx_hmac(&hmac, CX_LAST, keyHandle, KEY_PATH_LEN, mac);
