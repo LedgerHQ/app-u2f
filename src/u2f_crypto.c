@@ -227,7 +227,6 @@ uint16_t u2f_crypto_sign_attestation(uint8_t *signature) {
 }
 
 void u2f_crypto_reset() {
-    os_memset(attestation_private_key.d, 0, 32);
     os_memset(app_private_key.d, 0, 32);
 }
 

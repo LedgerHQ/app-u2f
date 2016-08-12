@@ -146,7 +146,7 @@ load:
 	python -m ledgerblue.loadApp --targetId $(TARGET_ID) --fileName bin/$(PROG).hex --appName $(APPNAME) --icon `python $(BOLOS_SDK)/icon.py 16 16 icon.gif hexbitmaponly` $(APP_LOAD_PARAMS) 
 
 load_release:
-	python -m ledgerblue.loadApp --targetId $(TARGET_ID) --fileName bin/$(PROG).hex --appName $(APPNAME) --icon `python $(BOLOS_SDK)/icon.py 16 16 icon.gif hexbitmaponly` $(APP_LOAD_PARAMS) --signature 304402203b82af418a7bcf2ad90e7fd1511c3e5b89ece1be339feb0d38b7b464bb89ec3702201d3a26dfad9f79949aeeefc6306fbb1fa815dd0cdac7241e5dd31c7dff8b5f1c
+	python -m ledgerblue.loadApp --targetId $(TARGET_ID) --fileName bin/$(PROG).hex --appName $(APPNAME) --icon `python $(BOLOS_SDK)/icon.py 16 16 icon.gif hexbitmaponly` $(APP_LOAD_PARAMS) --signature 3045022100c3cb9d7a4001cd262fd5615bab015d099f83176baa403a6b1a6044b8132e1ca902201ff8a2ac2fd32ddc003725cb953b2741a692f11ccf2487c345a72cf539996678 
 
 delete:
 	python -m ledgerblue.deleteApp --targetId $(TARGET_ID) --appName $(APPNAME)
