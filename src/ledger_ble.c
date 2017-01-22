@@ -17,9 +17,6 @@
 
 #ifdef HAVE_BLE
 
-// not used for now
-#define THROW(x) return; // for(;;);
-
 #include "u2f_io.h"
 
 #include "osal.h"
@@ -91,12 +88,6 @@ volatile u2f_service_t *u2fServiceReference;
 // defined by the characteristic length, use minimal to be wide usable
 #define BLE_CHUNK_LENGTH_B 20
 
-/** @defgroup BlueNRG_Shield_Sample_Application
- *  @brief Sample application for BlueNR // not used for now
-#define THROW(x) for(;;);G Shield on STM32 Nucleo boards.
- *  @{
- */
-
 /* Private defines
  * ------------------------------------------------------------*/
 /* Private macros
@@ -111,9 +102,7 @@ volatile u2f_service_t *u2fServiceReference;
  * Little endian encoding
  */
 const unsigned char SERVER_BDADDR_CONST[] = {0x02, 0x00, 0x00,
-                                             0xe7, 0x11, 0x3A};
-const unsigned char DEFAULT_NAME_CONST[] = {
-    AD_TYPE_COMPLETE_LOCAL_NAME, 'x', ' ', 'U', '2', 'F', '\0'};
+                                             0xe7, 0xd0, 0xf1};
 const uint8_t u2f_serviceUUIDList[] = {AD_TYPE_16_BIT_SERV_UUID, 0xfd, 0xff};
 unsigned char SERVER_BDADDR[16];
 unsigned char DEFAULT_NAME[32];
@@ -129,15 +118,16 @@ void BLE_set_u2fServiceReference(u2f_service_t *reference) {
 
 void BLE_diversify_name_address() {
     const char hexdigits[] = "0123456789ABCDEF";
-    uint32_t uid;
-    // const unsigned int * UID = (unsigned int *)0x00800000;
-    // uid = UID[0] ^ UID[1];
-    uid = 0x12345678;
+    uint32_t uid = N_u2f.uid;
+    uint8_t tmp;
     memset(DEFAULT_NAME, 0,
            sizeof(DEFAULT_NAME)); // ensure no uninit during strlen
     memset(SERVER_BDADDR, 0, sizeof(SERVER_BDADDR));
     memcpy(SERVER_BDADDR, SERVER_BDADDR_CONST, sizeof(SERVER_BDADDR_CONST));
-    memcpy(DEFAULT_NAME, DEFAULT_NAME_CONST, sizeof(DEFAULT_NAME_CONST));
+
+    DEFAULT_NAME[0] = AD_TYPE_COMPLETE_LOCAL_NAME;
+    snprintf(DEFAULT_NAME + 1, sizeof(DEFAULT_NAME) - 1, "U2F", uid >> 24, uid);
+
     memcpy(&SERVER_BDADDR[0], &uid, 4);
 }
 
@@ -161,8 +151,8 @@ void BLE_make_discoverable(const char *discovered_name) {
         THROW(EXCEPTION);
     }
 
-    // set device name
-    const char *name = "Ledger";
+    // set device name (max 7 chars)
+    const char *name = "U2F";
     ret = aci_gatt_update_char_value(G_io_ble.gap_service_handle,
                                      G_io_ble.gap_dev_name_char_handle, 0,
                                      strlen(name), (uint8_t *)name);
@@ -208,14 +198,14 @@ void BLE_make_discoverable(const char *discovered_name) {
     ret = aci_gap_set_discoverable(
         ADV_IND,
         // low power leverage
-        500 * 625 / 1000, 3000 * 625 / 1000, PUBLIC_ADDR, NO_WHITE_LIST_USE,
+        100 * 625 / 1000, 800 * 625 / 1000, PUBLIC_ADDR, NO_WHITE_LIST_USE,
         strlen(discovered_name), discovered_name, sizeof(u2f_serviceUUIDList),
         u2f_serviceUUIDList,
         // low power leverage
         6 * 1250 / 1000,
         50 * 1250 / 1000); // (50) bigger than this it's far too long
     if (ret) {
-        PRINTF("set discoverable failed.\n");
+        PRINTF("set discoverable failed %d.\n", ret);
         THROW(EXCEPTION);
     }
 
@@ -229,6 +219,9 @@ void BLE_make_discoverable(const char *discovered_name) {
  */
 void BLE_setup(unsigned char *discovered_name) {
     tBleStatus ret;
+
+    G_io_ble.apdu_transport_busy_sending = 0;
+    G_io_ble.apdu_transport_lock = 0;
 
     // PRINTF("setup\n");
     BLE_diversify_name_address();
@@ -248,7 +241,6 @@ void BLE_setup(unsigned char *discovered_name) {
     }
 
     ret = aci_gatt_init();
-    PRINTF("GATT\n");
     if (ret) {
         PRINTF("GATT_Init failed.\n");
         THROW(EXCEPTION);
@@ -566,12 +558,17 @@ void BLE_send(unsigned short handle, uint8_t *data_buffer, uint8_t Nb_bytes) {
                 // process IOs, and BLE fetch, ble queue is updated through
                 // common code
                 io_seproxyhal_handle_event();
+
+                // detect disconnections
+                if (!G_io_ble.client_link_established) {
+                    THROW(EXCEPTION);
+                }
             } while (!G_io_ble.tx_pool_available);
 
             // TODO go low power, before retrying
             retries--;
             if (retries == 0) {
-                PRINTF("BLE SEND ERROR\n");
+                THROW(EXCEPTION);
                 return;
             }
         } else if (ret == BLE_STATUS_SUCCESS) {
@@ -689,7 +686,7 @@ char BLE_protocol_send(unsigned char *data, unsigned short length) {
 
 
 void BLE_reset_connection(void) {
-    THROW(EXCEPTION_DISCONNECT);
+    THROW(EXCEPTION_IO_RESET);
     /*
       G_io_ble.client_link_established = FALSE;
       G_io_ble.connection_timeout_enabled = 0;
@@ -705,16 +702,22 @@ void BLE_reset_connection(void) {
     */
 }
 
+// weak function to be overloaded by the user
+void libbluenrg_default_event(void) {
+}
+
 /**
  * @brief  This function is called when there is a LE Connection Complete event.
  * @param  addr : Address of peer device
  * @param  handle : Connection handle
  * @retval None
  */
+void libbluenrg_event_connected(void)
+    __attribute__((weak, alias("libbluenrg_default_event")));
 void GAP_ConnectionComplete_CB(uint8_t addr[6], uint16_t handle) {
     UNUSED(addr);
     UNUSED(handle);
-    PRINTF("BLE client connected\n");
+    // PRINTF("BLE client connected\n");
 
     /*
     PRINTF("client connected\n");
@@ -722,6 +725,9 @@ void GAP_ConnectionComplete_CB(uint8_t addr[6], uint16_t handle) {
     */
 
     G_io_ble.client_link_established = FALSE;
+
+    // forward event
+    libbluenrg_event_connected();
     /*
     // wait until notification registration is performed
     G_io_ble.connection_timeout_ms = BLE_TIMEOUT_CONNECTION_MS;
@@ -734,12 +740,13 @@ void GAP_ConnectionComplete_CB(uint8_t addr[6], uint16_t handle) {
  * @param  None
  * @retval None
  */
+void libbluenrg_event_disconnected(void)
+    __attribute__((weak, alias("libbluenrg_default_event")));
 void GAP_DisconnectionComplete_CB(void) {
-    PRINTF("BLE client disconnected\n");
-
-    THROW(EXCEPTION_DISCONNECT);
-
+    // PRINTF("BLE client disconnected\n");
     G_io_ble.client_link_established = FALSE;
+
+    libbluenrg_event_disconnected();
 }
 
 /**
@@ -761,7 +768,7 @@ void HCI_Event_CB(void *pckt) {
     switch (event_pckt->evt) {
     case EVT_DISCONN_COMPLETE: {
         GAP_DisconnectionComplete_CB();
-        PRINTF("disconnection complete\n");
+        // PRINTF("disconnection complete\n");
     } break;
 
     case EVT_LE_META_EVENT: {
@@ -771,7 +778,7 @@ void HCI_Event_CB(void *pckt) {
         case EVT_LE_CONN_COMPLETE: {
             evt_le_connection_complete *cc = (void *)evt->data;
             GAP_ConnectionComplete_CB(cc->peer_bdaddr, cc->handle);
-            PRINTF("connection complete\n");
+            // PRINTF("connection complete\n");
         } break;
         }
     } break;
@@ -779,6 +786,9 @@ void HCI_Event_CB(void *pckt) {
     case EVT_VENDOR: {
         evt_blue_aci *blue_evt = (void *)event_pckt->data;
         switch (blue_evt->ecode) {
+        case EVT_BLUE_GAP_PAIRING_CMPLT:
+            break;
+
         case EVT_BLUE_GATT_ATTRIBUTE_MODIFIED: {
             evt_gatt_attr_modified *evt =
                 (evt_gatt_attr_modified *)blue_evt->data;

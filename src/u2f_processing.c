@@ -314,6 +314,10 @@ void u2f_handle_sign(u2f_service_t *service, uint8_t p1, uint8_t p2,
         os_memmove(service->messageBuffer + offset, SW_SUCCESS,
                    sizeof(SW_SUCCESS));
         offset += sizeof(SW_SUCCESS);
+        // kill keep alive sending
+        if (service->transportMedia == U2F_MEDIA_BLE) {
+            service->requireKeepalive = false;
+        }
         u2f_send_fragmented_response(service, U2F_CMD_MSG,
                                      service->messageBuffer, offset, true);
     }

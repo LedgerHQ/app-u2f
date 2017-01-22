@@ -25,7 +25,11 @@ WIDE u2f_config_t N_u2f_real;
 void u2f_init_config(void) {
     if (N_u2f.initialized != 1) { // TODO use a magic here ?, well the memory is
                                   // wiped prior to install but still
+        uint8_t dummy[4];
         u2f_config_t u2fConfig;
+        cx_rng(dummy, 4);
+        u2fConfig.uid =
+            (dummy[0] << 24) | (dummy[1] << 16) | (dummy[2] << 8) | dummy[3];
         u2fConfig.counter = 1;
         u2fConfig.initialized = 1;
 #ifndef DERIVE_JOHOE

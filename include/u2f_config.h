@@ -30,6 +30,7 @@
 #define U2F_KEY_PATH 0x80553246
 
 typedef struct u2f_config_t {
+    uint32_t uid;
     uint32_t counter;
     uint8_t initialized;
 #ifndef DERIVE_JOHOE
@@ -39,7 +40,7 @@ typedef struct u2f_config_t {
 
 extern WIDE u2f_config_t N_u2f_real;
 
-#define N_u2f (*(WIDE u2f_config_t*) PIC(&N_u2f_real))
+#define N_u2f (*(WIDE u2f_config_t *)PIC(&N_u2f_real))
 
 void u2f_init_config(void);
 

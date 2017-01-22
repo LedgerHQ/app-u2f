@@ -111,14 +111,61 @@
 #define HID_EPOUT_ADDR 0x02
 #define HID_EPOUT_SIZE 0x40
 
+#define USBD_LANGID_STRING 0x409
+
 #ifdef HAVE_VID_PID_PROBER
 #define USBD_VID 0x2581
 #define USBD_PID 0xf1d1
-#define USBD_LANGID_STRING 0x409
+const uint8_t const USBD_PRODUCT_FS_STRING[] = {
+    10 * 2 + 2, USB_DESC_TYPE_STRING,
+    'N',        0,
+    'a',        0,
+    'n',        0,
+    'o',        0,
+    '-',        0,
+    'U',        0,
+    '2',        0,
+    'F',        0,
+    '-',        0,
+    'P',        0,
+};
 #else
 #define USBD_VID 0x2C97
+#if TARGET_ID == 0x31000002 // blue
+#define USBD_PID 0x0000
+const uint8_t const USBD_PRODUCT_FS_STRING[] = {
+    4 * 2 + 2, USB_DESC_TYPE_STRING, 'B', 0, 'l', 0, 'u', 0, 'e', 0,
+};
+
+#elif TARGET_ID == 0x31100002 // nano s
 #define USBD_PID 0x0001
-#define USBD_LANGID_STRING 0x409
+const uint8_t const USBD_PRODUCT_FS_STRING[] = {
+    6 * 2 + 2, USB_DESC_TYPE_STRING,
+    'N',       0,
+    'a',       0,
+    'n',       0,
+    'o',       0,
+    ' ',       0,
+    'S',       0,
+};
+#elif TARGET_ID == 0x31200002 // aramis
+#define USBD_PID 0x0002
+const uint8_t const USBD_PRODUCT_FS_STRING[] = {
+    10 * 2 + 2, USB_DESC_TYPE_STRING,
+    'A',        0,
+    'r',        0,
+    'a',        0,
+    'm',        0,
+    'i',        0,
+    's',        0,
+    ' ',        0,
+    'U',        0,
+    '2',        0,
+    'F',        0,
+};
+#else
+#error unknown TARGET_ID
+#endif
 #endif
 
 /* USB Standard Device Descriptor */
@@ -128,7 +175,7 @@ const uint8_t const USBD_LangIDDesc[USB_LEN_LANGID_STR_DESC] = {
 };
 
 const uint8_t const USB_SERIAL_STRING[] = {
-    0x2, USB_DESC_TYPE_STRING,
+    3 * 2 + 2, USB_DESC_TYPE_STRING, '0', 0, '.', 0, '1', 0,
 };
 
 const uint8_t const USBD_MANUFACTURER_STRING[] = {
@@ -141,15 +188,6 @@ const uint8_t const USBD_MANUFACTURER_STRING[] = {
     'r',       0,
 };
 
-const uint8_t const USBD_PRODUCT_FS_STRING[] = {
-    6 * 2 + 2, USB_DESC_TYPE_STRING,
-    'N',       0,
-    'a',       0,
-    'n',       0,
-    'o',       0,
-    ' ',       0,
-    'S',       0,
-};
 #define USBD_INTERFACE_FS_STRING USBD_PRODUCT_FS_STRING
 #define USBD_CONFIGURATION_FS_STRING USBD_PRODUCT_FS_STRING
 
@@ -181,7 +219,7 @@ __ALIGN_BEGIN const uint8_t const USBD_HID_CfgDesc[] __ALIGN_END = {
     USB_DESC_TYPE_CONFIGURATION, /* bDescriptorType: Configuration */
     0x29,
     /* wTotalLength: Bytes returned */
-    0x00, 0x01,           /*bNumInterfaces: 1 interface*/
+    0x00, 0x01,           /*bNumInterfaces */
     0x01,                 /*bConfigurationValue: Configuration value*/
     USBD_IDX_PRODUCT_STR, /*iConfiguration: Index of string descriptor
 describing
@@ -262,23 +300,25 @@ __ALIGN_BEGIN const uint8_t const USBD_HID_DeviceQualifierDesc[] __ALIGN_END = {
 
 /* USB Standard Device Descriptor */
 const uint8_t const USBD_DeviceDesc[USB_LEN_DEV_DESC] = {
-    0x12,                      /* bLength */
-    USB_DESC_TYPE_DEVICE,      /* bDescriptorType */
-    0x00,                      /* bcdUSB */
-    0x02, 0x00,                /* bDeviceClass */
-    0x00,                      /* bDeviceSubClass */
-    0x00,                      /* bDeviceProtocol */
-    USB_MAX_EP0_SIZE,          /* bMaxPacketSize */
-    LOBYTE(USBD_VID),          /* idVendor */
-    HIBYTE(USBD_VID),          /* idVendor */
-    LOBYTE(USBD_PID),          /* idVendor */
-    HIBYTE(USBD_PID),          /* idVendor */
-    0x00,                      /* bcdDevice rel. 2.00 */
-    0x02, USBD_IDX_MFC_STR,    /* Index of manufacturer string */
-    USBD_IDX_PRODUCT_STR,      /* Index of product string */
-    USBD_IDX_SERIAL_STR,       /* Index of serial number string */
-    USBD_MAX_NUM_CONFIGURATION /* bNumConfigurations */
-};                             /* USB_DeviceDescriptor */
+    0x12,                 /* bLength */
+    USB_DESC_TYPE_DEVICE, /* bDescriptorType */
+    0x00,                 /* bcdUSB */
+    0x02,
+    0x00,             /* bDeviceClass */
+    0x00,             /* bDeviceSubClass */
+    0x00,             /* bDeviceProtocol */
+    USB_MAX_EP0_SIZE, /* bMaxPacketSize */
+    LOBYTE(USBD_VID), /* idVendor */
+    HIBYTE(USBD_VID), /* idVendor */
+    LOBYTE(USBD_PID), /* idVendor */
+    HIBYTE(USBD_PID), /* idVendor */
+    0x00,             /* bcdDevice rel. 2.00 */
+    0x02,
+    USBD_IDX_MFC_STR,     /* Index of manufacturer string */
+    USBD_IDX_PRODUCT_STR, /* Index of product string */
+    USBD_IDX_SERIAL_STR,  /* Index of serial number string */
+    1                     /* bNumConfigurations */
+};                        /* USB_DeviceDescriptor */
 
 /**
   * @brief  Returns the device descriptor.
@@ -445,8 +485,15 @@ const USBD_DescriptorsTypeDef const HID_Desc = {
     USBD_HID_InterfaceStrDescriptor,    NULL,
 };
 
-// the USB device
-USBD_HandleTypeDef USBD_Device;
+static const USBD_ClassTypeDef const USBD_HID = {
+    USBD_HID_Init, USBD_HID_DeInit, USBD_HID_Setup, NULL, /*EP0_TxSent*/
+    NULL, /*EP0_RxReady*/                                 /* STATUS STAGE IN */
+    NULL,                                                 /*DataIn*/
+    USBD_HID_DataOut_impl,                                /*DataOut*/
+    NULL,                                                 /*SOF */
+    NULL, NULL, USBD_HID_GetCfgDesc_impl, USBD_HID_GetCfgDesc_impl,
+    USBD_HID_GetCfgDesc_impl, USBD_HID_GetDeviceQualifierDesc_impl,
+};
 
 void USB_power(unsigned char enabled) {
     os_memset(&USBD_Device, 0, sizeof(USBD_Device));

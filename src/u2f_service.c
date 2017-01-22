@@ -23,7 +23,8 @@
 #include "u2f_processing.h"
 #include "u2f_timer.h"
 
-#define DEFAULT_TIMER_INTERVAL_MS 200
+// not too fast blinking
+#define DEFAULT_TIMER_INTERVAL_MS 500
 
 void u2f_reset(u2f_service_t *service, bool keepUserPresence) {
     service->transportState = U2F_IDLE;
@@ -128,6 +129,7 @@ void u2f_continue_sending_fragmented_response(u2f_service_t *service) {
         service->sendOffset += blockSize;
         service->sendPacketIndex++;
     } while (service->sendOffset != service->sendLength);
+
     if (service->sendOffset == service->sendLength) {
         u2f_io_close_session();
         service->sending = false;

@@ -26,8 +26,6 @@
 
 #include "u2f_service.h"
 
-#define EXCEPTION_DISCONNECT 0x80
-
 void u2f_io_open_session(void);
 void u2f_io_send(uint8_t *buffer, uint16_t length, u2f_transport_media_t media);
 void u2f_io_close_session(void);
