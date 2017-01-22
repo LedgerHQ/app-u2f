@@ -14,11 +14,20 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #*******************************************************************************
-
-APPNAME = "Fido U2F" 
-TARGET_ID = 0x31100002 #Nano S
-#TARGET_ID = 0x31000002 #Blue
+#extract TARGET_ID from the SDK to allow for makefile choices
+TARGET_ID := $(shell cat $(BOLOS_SDK)/include/bolos_target.h | grep 0x | cut -f3 -d' ')
+$(info TARGET_ID=$(TARGET_ID))
+APPNAME    = "Fido U2F" 
+APPVERSION =1.1
 APP_LOAD_PARAMS=--path "5583430'" --curve prime256r1 --appFlags 0x40
+
+#prepare hsm generation
+ifeq ($(TARGET_ID),0x31000002)
+ICONNAME=app_fido.gif
+LOADFLAGS = --params --appVersion $(APPVERSION)
+else
+ICONNAME=icon.gif
+endif
 
 ################
 # Default rule #
@@ -44,8 +53,16 @@ PROG     := token
 
 CONFIG_PRODUCTIONS := bin/$(PROG)
 
+GLYPH_FILES := $(addprefix glyphs/,$(sort $(notdir $(shell find glyphs/))))
+GLYPH_DESTC := src/glyphs.c
+GLYPH_DESTH := src/glyphs.h
+$(GLYPH_DESTC) $(GLYPH_DESTH): $(GLYPH_FILES) $(BOLOS_SDK)/icon.py
+	-rm $@
+	if [ ! -z "$(GLYPH_FILES)" ] ; then for gif in $(GLYPH_FILES) ; do python $(BOLOS_SDK)/icon.py $$gif glyphcheader ; done > $(GLYPH_DESTH) ; fi
+	if [ ! -z "$(GLYPH_FILES)" ] ; then for gif in $(GLYPH_FILES) ; do python $(BOLOS_SDK)/icon.py $$gif glyphcfile ; done > $(GLYPH_DESTC) ; fi
+
 SOURCE_PATH   := src $(BOLOS_SDK)/src $(dir $(shell find $(BOLOS_SDK)/lib_stusb | grep "\.c$$")) $(dir $(shell find $(BOLOS_SDK)/lib_bluenrg | grep "\.c$$"))
-SOURCE_FILES  := $(foreach path, $(SOURCE_PATH),$(shell find $(path) | grep "\.c$$") )
+SOURCE_FILES  := $(foreach path, $(SOURCE_PATH),$(shell find $(path) | grep "\.c$$") ) $(GLYPH_DESTC)
 INCLUDES_PATH := $(dir $(shell find $(BOLOS_SDK)/lib_stusb | grep "\.h$$")) $(dir $(shell find $(BOLOS_SDK)/lib_bluenrg/ | grep "\.h$$")) include src $(BOLOS_SDK)/include $(BOLOS_SDK)/include/arm 
 
 ### platform definitions
@@ -55,7 +72,7 @@ DEFINES := ST31 gcc __IO=volatile
 DEFINES   += PRINTF\(...\)=
 
 DEFINES   += OS_IO_SEPROXYHAL IO_SEPROXYHAL_BUFFER_SIZE_B=128
-DEFINES   += HAVE_BAGL
+DEFINES   += HAVE_BAGL HAVE_SPRINTF
 DEFINES   += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=6 IO_HID_EP_LENGTH=64
 DEFINES   += HAVE_BLE HAVE_BLUENRG HCI_READ_PACKET_NUM_MAX=3 BLUENRG_MS HCI_READ_PACKET_SIZE=72
 #DEFINES   += HAVE_BLE_APDU
@@ -70,8 +87,6 @@ DEFINES   += USB_SEGMENT_SIZE=64
 DEFINES   += BLE_SEGMENT_SIZE=32 #max MTU, min 20
 DEFINES   += U2F_MAX_MESSAGE_SIZE=768
 DEFINES   += UNUSED\(x\)=\(void\)x
-
-DEFINES   += TARGET_ID=$(TARGET_ID)
 
 ##############
 # Compiler #
@@ -130,9 +145,9 @@ ifeq ($(filter clean,$(MAKECMDGOALS)),)
 endif
 
 clean:
-	rm -fr obj bin debug dep
+	rm -fr obj bin debug dep $(GLYPH_DESTC) $(GLYPH_DESTH)
 
-prepare:
+prepare: $(GLYPH_DESTC)
 	@mkdir -p bin obj debug dep
 
 .SECONDEXPANSION:
@@ -142,11 +157,10 @@ log = $(if $(strip $(VERBOSE)),$1,@$1)
 
 default: prepare bin/$(PROG)
 
-load: 
-	python -m ledgerblue.loadApp --targetId $(TARGET_ID) --fileName bin/$(PROG).hex --appName $(APPNAME) --icon `python $(BOLOS_SDK)/icon.py 16 16 icon.gif hexbitmaponly` $(APP_LOAD_PARAMS) 
 
-load_release:
-	python -m ledgerblue.loadApp --targetId $(TARGET_ID) --fileName bin/$(PROG).hex --appName $(APPNAME) --icon `python $(BOLOS_SDK)/icon.py 16 16 icon.gif hexbitmaponly` $(APP_LOAD_PARAMS) --signature 3044022002a84ce6e3d336d4fc564b882c5421e6bfe1ef8805ad6b99a2d3fba2c7fdcc44022053964e6f77242698db5e23434ea324dec290f2ee6e5d9fb683dc4dd1c98ef00f 
+load: all
+	python -m ledgerblue.loadApp --targetId $(TARGET_ID) --fileName bin/$(PROG).hex --delete --appName $(APPNAME) --icon `python $(BOLOS_SDK)/icon.py $(ICONNAME) hexbitmaponly` $(LOADFLAGS) $(APP_LOAD_PARAMS) 
+
 
 delete:
 	python -m ledgerblue.deleteApp --targetId $(TARGET_ID) --appName $(APPNAME)
