@@ -55,9 +55,11 @@ void u2f_io_send(uint8_t *buffer, uint16_t length,
     case U2F_MEDIA_USB:
         io_usb_send_apdu_data(u2fSegment, USB_SEGMENT_SIZE);
         break;
+#ifdef HAVE_BLE
     case U2F_MEDIA_BLE:
         BLE_protocol_send(buffer, length);
         break;
+#endif
     default:
         PRINTF("Request to send on unsupported media %d\n", media);
         break;

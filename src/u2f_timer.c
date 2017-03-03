@@ -40,10 +40,12 @@ void u2f_timer_register(uint32_t timerMs, u2fTimer_t timerCallback) {
 }
 
 void u2f_timer_cancel() {
+    /*
     G_io_seproxyhal_spi_buffer[0] = SEPROXYHAL_TAG_SET_TICKER_INTERVAL;
     G_io_seproxyhal_spi_buffer[1] = 0;
     G_io_seproxyhal_spi_buffer[2] = 2;
     G_io_seproxyhal_spi_buffer[3] = 0;
     G_io_seproxyhal_spi_buffer[4] = 0;
     io_seproxyhal_spi_send(G_io_seproxyhal_spi_buffer, 5);
+    */
 }

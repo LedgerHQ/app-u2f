@@ -18,7 +18,7 @@
 TARGET_ID := $(shell cat $(BOLOS_SDK)/include/bolos_target.h | grep 0x | cut -f3 -d' ')
 $(info TARGET_ID=$(TARGET_ID))
 APPNAME    = "Fido U2F" 
-APPVERSION =1.1
+APPVERSION =1.2.1
 APP_LOAD_PARAMS=--path "5583430'" --curve prime256r1 --appFlags 0x40
 
 #prepare hsm generation
@@ -74,8 +74,10 @@ DEFINES   += PRINTF\(...\)=
 DEFINES   += OS_IO_SEPROXYHAL IO_SEPROXYHAL_BUFFER_SIZE_B=128
 DEFINES   += HAVE_BAGL HAVE_SPRINTF
 DEFINES   += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=6 IO_HID_EP_LENGTH=64
+ifneq ($(TARGET_ID),0x31100002)
 DEFINES   += HAVE_BLE HAVE_BLUENRG HCI_READ_PACKET_NUM_MAX=3 BLUENRG_MS HCI_READ_PACKET_SIZE=72
 #DEFINES   += HAVE_BLE_APDU
+endif
 # Extra negative tests for interoperability tests
 DEFINES	  += HAVE_TEST_INTEROP
 # Derive on the same path as Johoe, disabled for speed (500 ms BLE timeout enforced)  
@@ -87,6 +89,7 @@ DEFINES   += USB_SEGMENT_SIZE=64
 DEFINES   += BLE_SEGMENT_SIZE=32 #max MTU, min 20
 DEFINES   += U2F_MAX_MESSAGE_SIZE=768
 DEFINES   += UNUSED\(x\)=\(void\)x
+DEFINES   += APPVERSION=\"$(APPVERSION)\"
 
 ##############
 # Compiler #

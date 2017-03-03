@@ -121,10 +121,10 @@ unsigned int ui_stepper_prepro(const bagl_element_t *element) {
     if (element->component.userid > 0) {
         switch (element->component.userid) {
         case 1:
-            io_seproxyhal_setup_ticker(2000);
+            UX_CALLBACK_SET_INTERVAL(2000);
             break;
         case 2:
-            io_seproxyhal_setup_ticker(3000);
+            UX_CALLBACK_SET_INTERVAL(3000);
             break;
         }
         return (ux_step == element->component.userid - 1);
@@ -794,98 +794,19 @@ void ui_confirm_register_blue(void) {
 #endif // #if TARGET_ID == 0x31000002
 
 #if TARGET_ID == 0x31100002
-const bagl_element_t ui_idle_nanos[] = {
-    // type                               userid    x    y   w    h  str rad
-    // fill      fg        bg      fid iid  txt   touchparams...       ]
-    {{BAGL_RECTANGLE, 0x00, 0, 0, 128, 32, 0, 0, BAGL_FILL, 0x000000, 0xFFFFFF,
-      0, 0},
-     NULL,
-     0,
-     0,
-     0,
-     NULL,
-     NULL,
-     NULL},
 
-    {{BAGL_ICON, 0x01, 16, 9, 14, 14, 0, 0, 0, 0xFFFFFF, 0x000000, 0,
-      BAGL_GLYPH_ICON_PEOPLE_BADGE},
-     NULL,
-     0,
-     0,
-     0,
-     NULL,
-     NULL,
-     NULL},
-    {{BAGL_LABELINE, 0x01, 37, 12, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
-      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px, 0},
-     "Ready to",
-     0,
-     0,
-     0,
-     NULL,
-     NULL,
-     NULL},
-    {{BAGL_LABELINE, 0x01, 38, 26, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
-      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px, 0},
-     "authenticate",
-     0,
-     0,
-     0,
-     NULL,
-     NULL,
-     NULL},
-    {{BAGL_ICON, 0x01, 118, 14, 7, 4, 0, 0, 0, 0xFFFFFF, 0x000000, 0,
-      BAGL_GLYPH_ICON_DOWN},
-     NULL,
-     0,
-     0,
-     0,
-     NULL,
-     NULL,
-     NULL},
+const ux_menu_entry_t menu_main[];
 
-    {{BAGL_ICON, 0x02, 29, 9, 14, 14, 0, 0, 0, 0xFFFFFF, 0x000000, 0,
-      BAGL_GLYPH_ICON_DASHBOARD_BADGE},
-     NULL,
-     0,
-     0,
-     0,
-     NULL,
-     NULL,
-     NULL},
-    //{{BAGL_LABELINE                       , 0x02,   0,   3, 128,  32, 0, 0, 0
-    //, 0xFFFFFF, 0x000000,
-    //BAGL_FONT_OPEN_SANS_REGULAR_11px|BAGL_FONT_ALIGNMENT_CENTER, 0  },
-    //"authenticate", 0, 0, 0, NULL, NULL, NULL },
-    {{BAGL_LABELINE, 0x02, 50, 19, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
-      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px, 0},
-     "Quit app",
-     0,
-     0,
-     0,
-     NULL,
-     NULL,
-     NULL},
-    {{BAGL_ICON, 0x02, 3, 14, 7, 4, 0, 0, 0, 0xFFFFFF, 0x000000, 0,
-      BAGL_GLYPH_ICON_UP},
-     NULL,
-     0,
-     0,
-     0,
-     NULL,
-     NULL,
-     NULL},
-};
-unsigned int ui_idle_nanos_button(unsigned int button_mask,
-                                  unsigned int button_mask_counter);
+const ux_menu_entry_t menu_about[] = {
+    {NULL, NULL, 0, NULL, "Version", APPVERSION, 0, 0},
+    {menu_main, NULL, 1, &C_icon_back, "Back", NULL, 61, 40},
+    UX_MENU_END};
 
-unsigned int ui_idle_nanos_state;
-unsigned int ui_idle_nanos_prepro(const bagl_element_t *element) {
-    if (element->component.userid > 0) {
-        return (ui_idle_nanos_state == element->component.userid - 1);
-    }
-    return 1;
-}
+const ux_menu_entry_t menu_main[] = {
+    {NULL, NULL, 0, &C_icon_people, "Ready to", "authenticate", 37, 16},
+    {menu_about, NULL, 0, NULL, "About", NULL, 0, 0},
+    {NULL, os_sched_exit, 0, &C_icon_dashboard, "Quit app", NULL, 50, 29},
+    UX_MENU_END};
 
 const bagl_element_t ui_register_nanos[] = {
     // type                               userid    x    y   w    h  str rad
@@ -900,17 +821,11 @@ const bagl_element_t ui_register_nanos[] = {
      NULL,
      NULL},
 
-    {{BAGL_ICON, 0x01, 20, 9, 14, 14, 0, 0, 0, 0xFFFFFF, 0x000000, 0,
-      BAGL_GLYPH_ICON_LOCK_BADGE},
-     NULL,
-     0,
-     0,
-     0,
-     NULL,
-     NULL,
-     NULL},
-    {{BAGL_LABELINE, 0x01, 41, 12, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
-      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px, 0},
+    //{{BAGL_ICON                           , 0x01,  20,   9,  14,  14, 0, 0, 0
+    //, 0xFFFFFF, 0x000000, 0, BAGL_GLYPH_ICON_LOCK_BADGE  }, NULL, 0, 0, 0,
+    //NULL, NULL, NULL },
+    {{BAGL_LABELINE, 0x01, 0, 12, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
+      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
      "Confirm",
      0,
      0,
@@ -918,8 +833,8 @@ const bagl_element_t ui_register_nanos[] = {
      NULL,
      NULL,
      NULL},
-    {{BAGL_LABELINE, 0x01, 41, 26, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
-      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px, 0},
+    {{BAGL_LABELINE, 0x01, 0, 26, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
+      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
      "registration",
      0,
      0,
@@ -987,17 +902,11 @@ const bagl_element_t ui_auth_nanos[] = {
      NULL,
      NULL},
 
-    {{BAGL_ICON, 0x01, 32, 9, 14, 14, 0, 0, 0, 0xFFFFFF, 0x000000, 0,
-      BAGL_GLYPH_ICON_LOCK_BADGE},
-     NULL,
-     0,
-     0,
-     0,
-     NULL,
-     NULL,
-     NULL},
-    {{BAGL_LABELINE, 0x01, 53, 12, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
-      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px, 0},
+    //{{BAGL_ICON                           , 0x01,  32,   9,  14,  14, 0, 0, 0
+    //, 0xFFFFFF, 0x000000, 0, BAGL_GLYPH_ICON_LOCK_BADGE  }, NULL, 0, 0, 0,
+    //NULL, NULL, NULL },
+    {{BAGL_LABELINE, 0x01, 0, 12, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
+      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
      "Confirm",
      0,
      0,
@@ -1005,9 +914,9 @@ const bagl_element_t ui_auth_nanos[] = {
      NULL,
      NULL,
      NULL},
-    {{BAGL_LABELINE, 0x01, 53, 26, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
-      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px, 0},
-     "log in",
+    {{BAGL_LABELINE, 0x01, 0, 26, 128, 32, 0, 0, 0, 0xFFFFFF, 0x000000,
+      BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
+     "login",
      0,
      0,
      0,
@@ -1083,10 +992,7 @@ void ui_idle(void) {
         UX_DISPLAY(ui_idle_blue, NULL);
     }
 #elif TARGET_ID == 0x31100002
-    if (ux.elements != ui_idle_nanos) {
-        ui_idle_nanos_state = 0; // start by displaying the idle first screen
-        UX_DISPLAY(ui_idle_nanos, ui_idle_nanos_prepro);
-    }
+    UX_MENU_DISPLAY(0, menu_main, NULL);
 #elif TARGET_ID == 0x31200002
     led_color_step = 0;
     led_color_step_count = 2;
@@ -1121,7 +1027,6 @@ unsigned int u2f_callback_exit(const bagl_element_t *element) {
 }
 unsigned int u2f_callback_cancel(const bagl_element_t *element) {
     u2f_confirm_user_presence(&u2fService, false, false);
-    // io_seproxyhal_setup_ticker(0);
     u2f_reset_display();
     return 0; // DO NOT REDISPLAY THE BUTTON
 }
@@ -1129,37 +1034,11 @@ unsigned int u2f_callback_confirm(const bagl_element_t *element) {
 #warning TODO the second parameter shall be processed by the u2f layer instead
     u2f_confirm_user_presence(&u2fService, true,
                               u2fService.transportMedia == U2F_MEDIA_BLE);
-    // io_seproxyhal_setup_ticker(0);
     u2f_reset_display();
     return 0; // DO NOT REDISPLAY THE BUTTON
 }
 
 #if TARGET_ID == 0x31100002
-unsigned int ui_idle_nanos_button(unsigned int button_mask,
-                                  unsigned int button_mask_counter) {
-    switch (button_mask) {
-    case BUTTON_EVT_RELEASED | BUTTON_LEFT: // UP
-        if (ui_idle_nanos_state == 1) {
-            ui_idle_nanos_state = 0;
-            UX_DISPLAY(ui_idle_nanos, ui_idle_nanos_prepro);
-        }
-        break;
-
-    case BUTTON_EVT_RELEASED | BUTTON_RIGHT: // DOWN
-        if (ui_idle_nanos_state == 0) {
-            ui_idle_nanos_state = 1;
-            UX_DISPLAY(ui_idle_nanos, ui_idle_nanos_prepro);
-        }
-        break;
-
-    case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT: // EXIT
-        if (ui_idle_nanos_state == 1) {
-            u2f_callback_exit(NULL);
-        }
-        break;
-    }
-    return 0;
-}
 
 // the same for both
 #define ui_auth_nanos_button ui_register_nanos_button
@@ -1206,6 +1085,8 @@ void ui_aramis_update(void) {
 }
 #endif // #if TARGET_ID == 0x31200002
 
+#ifdef HAVE_BLE
+
 void BLE_discoverable(void) {
     BLE_set_u2fServiceReference(&u2fService);
     BLE_power(0, NULL);
@@ -1213,6 +1094,8 @@ void BLE_discoverable(void) {
     // restart IOs
     BLE_power(1, NULL);
 }
+
+#endif
 
 #if TARGET_ID == 0x31200002
 void libbluenrg_event_connected(void) {
@@ -1326,14 +1209,17 @@ unsigned char io_event(unsigned char channel) {
 
     case SEPROXYHAL_TAG_TICKER_EVENT:
         UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {
-
+            // defaulty retrig very soon (will be overriden during
+            // stepper_prepro)
             UX_CALLBACK_SET_INTERVAL(500);
 
+            /*
             // avoid idling in USB, stay awake to process request anytime
             if ((G_last_mcu_state &
-                 SEPROXYHAL_TAG_STATUS_EVENT_FLAG_USB_POWERED)) {
-                UX_WAKE_UP();
+            SEPROXYHAL_TAG_STATUS_EVENT_FLAG_USB_POWERED)) {
+              UX_WAKE_UP();
             }
+            */
 
             // a power off request has been issued
             if (ui_power_off_ms) {
@@ -1348,7 +1234,7 @@ unsigned char io_event(unsigned char channel) {
             // has been delegated to bolos_ux before executing here)
             if (!io_seproxyhal_spi_is_status_sent()) {
 
-#if TARGET_ID == 0x31100002 || TARGET_ID == 0x31200002
+#if TARGET_ID == 0x31000002 || TARGET_ID == 0x31200002
                 if ((os_seph_features() &
                      SEPROXYHAL_TAG_SESSION_START_EVENT_FEATURE_BLE)) {
                     if (io_ble_discover_request) {
@@ -1360,17 +1246,18 @@ unsigned char io_event(unsigned char channel) {
                         BLE_discoverable();
                     }
                 }
-#endif // TARGET_ID == 0x31100002 || TARGET_ID == 0x31200002
+#endif // TARGET_ID == 0x31000002 || TARGET_ID == 0x31200002
 
                 if (u2fService.timeoutFunction != NULL) {
                     u2fService.timeoutFunction(&u2fService);
                 }
 
                 // only redisplay if timeout has done nothing
-                if (ux_step_count > 0) {
+                if (ux_step_count > 0 && UX_ALLOWED) {
                     // prepare next screen
                     ux_step = (ux_step + 1) % ux_step_count;
-                    // redisplay screen
+                    // redisplay screen (precall stepper prepro which will
+                    // retrig ticker sooner or later)
                     UX_REDISPLAY();
                 }
 
@@ -1534,12 +1421,15 @@ void u2f_prompt_user_presence(u2f_service_t *service, bool enroll,
         ui_confirm_login_blue();
     }
 #elif TARGET_ID == 0x31100002
-    array_hexstr(verifyName, applicationParameter, HASH_LENGTH / 2);
-    verifyName[HASH_LENGTH / 2 * 2] = '.';
-    verifyName[HASH_LENGTH / 2 * 2 + 1] = '.';
-    verifyName[HASH_LENGTH / 2 * 2 + 2] = '.';
-    array_hexstr(verifyName + HASH_LENGTH / 2 * 2 + 3,
-                 applicationParameter + 32 - HASH_LENGTH / 2, HASH_LENGTH / 2);
+    if (name == NULL) {
+        array_hexstr(verifyName, applicationParameter, HASH_LENGTH / 2);
+        verifyName[HASH_LENGTH / 2 * 2] = '.';
+        verifyName[HASH_LENGTH / 2 * 2 + 1] = '.';
+        verifyName[HASH_LENGTH / 2 * 2 + 2] = '.';
+        array_hexstr(verifyName + HASH_LENGTH / 2 * 2 + 3,
+                     applicationParameter + 32 - HASH_LENGTH / 2,
+                     HASH_LENGTH / 2);
+    }
 
     ux_step = 0;
     ux_step_count = 2;
