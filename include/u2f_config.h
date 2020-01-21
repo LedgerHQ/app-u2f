@@ -33,15 +33,24 @@ typedef struct u2f_config_t {
     uint32_t uid;
     uint32_t counter;
     uint8_t initialized;
+#ifdef HAVE_BLE    
+    uint8_t ble_mac[6];
+#endif    
 #ifndef DERIVE_JOHOE
     uint8_t hmacKey[64];
 #endif
 } u2f_config_t;
 
-extern WIDE u2f_config_t N_u2f_real;
+extern u2f_config_t const N_u2f_real;
 
-#define N_u2f (*(WIDE u2f_config_t *)PIC(&N_u2f_real))
+#define N_u2f (*(volatile u2f_config_t*) PIC(&N_u2f_real))
 
 void u2f_init_config(void);
+
+#ifdef HAVE_BLE
+
+uint8_t *u2f_get_ble_mac(void);
+
+#endif
 
 #endif
