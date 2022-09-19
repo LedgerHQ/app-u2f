@@ -19,23 +19,23 @@ $(error Environment variable BOLOS_SDK is not set)
 endif
 include $(BOLOS_SDK)/Makefile.defines
 
-APPNAME    = "Fido U2F" 
+APPNAME    = "Fido U2F"
 
-APP_LOAD_PARAMS=--path "5583430'" --curve prime256r1 --appFlags 0x240 $(COMMON_LOAD_PARAMS)
+APP_LOAD_PARAMS=--path "5583430'" --curve secp256r1 --appFlags 0x240 $(COMMON_LOAD_PARAMS)
 
 APPVERSION_M=1
 APPVERSION_N=2
-APPVERSION_P=7
+APPVERSION_P=9
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
 #prepare hsm generation
 ifeq ($(TARGET_NAME),TARGET_BLUE)
 ICONNAME=app_fido.gif
 else
-ifeq ($(TARGET_NAME),TARGET_NANOX)
-ICONNAME=icon_nanox.gif
-else
+ifeq ($(TARGET_NAME),TARGET_NANOS)
 ICONNAME=icon.gif
+else
+ICONNAME=icon_nanox.gif
 endif
 endif
 
@@ -61,24 +61,23 @@ DEFINES   += HAVE_BLE HAVE_BLUENRG HCI_READ_PACKET_NUM_MAX=3 BLUENRG_MS HCI_READ
 endif
 # Extra negative tests for interoperability tests
 #DEFINES	  += HAVE_TEST_INTEROP
-# Derive on the same path as Johoe, disabled for speed (500 ms BLE timeout enforced)  
+# Derive on the same path as Johoe, disabled for speed (500 ms BLE timeout enforced)
 #DEFINES   += DERIVE_JOHOE
 
 DEFINES   += HAVE_U2F HAVE_IO_U2F
 DEFINES   += USB_SEGMENT_SIZE=64
-DEFINES   += BLE_SEGMENT_SIZE=20 
+DEFINES   += BLE_SEGMENT_SIZE=20
 #DEFINES   += U2F_MAX_MESSAGE_SIZE=768
 DEFINES   += CUSTOM_IO_APDU_BUFFER_SIZE=768
 DEFINES   += UNUSED\(x\)=\(void\)x
 DEFINES   += APPVERSION=\"$(APPVERSION)\"
 
-DEFINES   += CX_COMPLIANCE_141
+DEFINES   += HAVE_COUNTER_MARKER
+#DEFINES   += HAVE_DUMMY_ATTESTATION
 
-#DEFINES   += HAVE_COUNTER_MARKER
-
-ifeq ($(TARGET_NAME),TARGET_NANOX)
-DEFINES   += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
-DEFINES   += HAVE_BLE_APDU # basic ledger apdu transport over BLE
+ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_NANOS2))
+#DEFINES   += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
+#DEFINES   += HAVE_BLE_APDU # basic ledger apdu transport over BLE
 
 DEFINES   += HAVE_GLO096 HAVE_UX_FLOW
 DEFINES   += HAVE_BAGL BAGL_WIDTH=128 BAGL_HEIGHT=64
@@ -93,7 +92,7 @@ endif
 ##############
 #GCCPATH   := $(BOLOS_ENV)/gcc-arm-none-eabi-5_3-2016q1/bin/
 #CLANGPATH := $(BOLOS_ENV)/clang-arm-fropi/bin/
-CC       := $(CLANGPATH)clang 
+CC       := $(CLANGPATH)clang
 
 #CFLAGS   += -O0
 CFLAGS   += -O3 -Os
@@ -102,7 +101,7 @@ AS     := $(GCCPATH)arm-none-eabi-gcc
 
 LD       := $(GCCPATH)arm-none-eabi-gcc
 LDFLAGS  += -O3 -Os
-LDLIBS   += -lm -lgcc -lc 
+LDLIBS   += -lm -lgcc -lc
 
 # import rules to compile glyphs(/pone)
 include $(BOLOS_SDK)/Makefile.glyphs
@@ -116,9 +115,9 @@ endif
 ifeq ($(TARGET_NAME),TARGET_ARAMIS)
 SDK_SOURCE_PATH  += lib_bluenrg
 endif
-ifeq ($(TARGET_NAME),TARGET_NANOX)
-APP_SOURCE_PATH  += lib_blewbxx_impl
-SDK_SOURCE_PATH  += lib_blewbxx
+ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_NANOS2))
+# APP_SOURCE_PATH  += lib_blewbxx_impl
+#SDK_SOURCE_PATH  += lib_blewbxx lib_blewbxx_impl
 SDK_SOURCE_PATH  += lib_ux
 endif
 
@@ -128,16 +127,16 @@ ifeq ($(TARGET_NAME),TARGET_NANOS)
 
 	ifneq "$(wildcard $(BOLOS_SDK)/lib_ux/src/ux_flow_engine.c)" ""
 		SDK_SOURCE_PATH  += lib_ux
-		DEFINES		       += HAVE_UX_FLOW		
+		DEFINES          += HAVE_UX_FLOW
 	endif
 
 endif
 
 load: all
-	python -m ledgerblue.loadApp $(APP_LOAD_PARAMS)
+	python3 -m ledgerblue.loadApp $(APP_LOAD_PARAMS)
 
 delete:
-	python -m ledgerblue.deleteApp $(COMMON_DELETE_PARAMS)
+	python3 -m ledgerblue.deleteApp $(COMMON_DELETE_PARAMS)
 
 # import generic rules from the sdk
 include $(BOLOS_SDK)/Makefile.rules

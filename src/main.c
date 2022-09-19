@@ -1424,12 +1424,14 @@ unsigned char io_event(unsigned char channel) {
       */
 
       // a power off request has been issued
+#if defined(TARGET_ARAMIS)
       if (ui_power_off_ms) {
         ui_power_off_ms -= MIN(500, ui_power_off_ms);
         if (!ui_power_off_ms) {
           io_power_off_request = 1;
         }
       }
+#endif // TARGET_ARAMIS
 
       // group all commands that are sending commands to make sure executing
       // them ONLY if status not sent by the BOLOS_UX app (event has been
@@ -1490,9 +1492,9 @@ unsigned char io_event(unsigned char channel) {
 
   // check current power level for aramis
   case SEPROXYHAL_TAG_STATUS_EVENT: {
+#if defined(TARGET_ARAMIS)
     unsigned int io_reset_requested = 0;
     unsigned int mcu_state;
-#if defined(TARGET_ARAMIS)
     if (os_seph_features() &
         SEPROXYHAL_TAG_SESSION_START_EVENT_FEATURE_LEDRGB) {
       mcu_state = U4BE(G_io_seproxyhal_spi_buffer, 3);
@@ -1505,7 +1507,6 @@ unsigned char io_event(unsigned char channel) {
       // set led color
       ui_aramis_update();
     }
-#endif // #if defined(TARGET_ARAMIS)
 
     // immediate power off when unplugged
     if (G_last_mcu_state & SEPROXYHAL_TAG_STATUS_EVENT_FLAG_USB_POWERED) {
@@ -1528,6 +1529,13 @@ unsigned char io_event(unsigned char channel) {
       THROW(EXCEPTION_IO_RESET);
     }
     // no break is intentional
+#else
+    if (G_io_apdu_media == IO_APDU_MEDIA_USB_HID &&
+        !(U4BE(G_io_seproxyhal_spi_buffer, 3) &
+          SEPROXYHAL_TAG_STATUS_EVENT_FLAG_USB_POWERED)) {
+        THROW(EXCEPTION_IO_RESET);
+    }
+#endif // TARGET_ARAMIS
   }
   default:
     UX_DEFAULT_EVENT();
@@ -1901,14 +1909,12 @@ void app_main(void) {
 
         ui_idle();
 
-#if defined(TARGET_NANOX)        
-        // grab the current plane mode setting
-        G_io_app.plane_mode = os_setting_get(OS_SETTING_PLANEMODE, NULL, 0);        
-#ifdef HAVE_BLE
+#if defined(HAVE_BLE) && defined(TARGET_NANOX)
+         // grab the current plane mode setting
+        G_io_app.plane_mode = os_setting_get(OS_SETTING_PLANEMODE, NULL, 0);
         BLE_power(0, NULL);
         BLE_power_mac(1, "Nano X", u2f_get_ble_mac());
-#endif // HAVE_BLE        
-#endif        
+#endif // HAVE_BLE && TARGET_NANOX
 
 #if !defined(TARGET_NANOX) && !defined(HAVE_UX_FLOW)
         // next timer callback in 500 ms

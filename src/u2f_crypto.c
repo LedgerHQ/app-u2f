@@ -105,8 +105,8 @@ uint16_t u2f_crypto_generate_key_and_wrap(const uint8_t *applicationParameter,
   cx_ecfp_generate_pair(CX_CURVE_256R1, &app_public_key, &app_private_key, 1);
   os_memmove(publicKey, app_public_key.W, 65);
   cx_hmac_sha256_init(&hmac, privateKeyData, sizeof(privateKeyData));
-  cx_hmac(&hmac, 0, applicationParameter, 32, keyHandle + KEY_PATH_LEN);
-  cx_hmac(&hmac, CX_LAST, keyHandle, KEY_PATH_LEN, keyHandle + KEY_PATH_LEN);
+  cx_hmac(&hmac, 0, applicationParameter, 32, keyHandle + KEY_PATH_LEN, 32);
+  cx_hmac(&hmac, CX_LAST, keyHandle, KEY_PATH_LEN, keyHandle + KEY_PATH_LEN, 32);
   os_memset(privateKeyData, 0, sizeof(privateKeyData));
   os_memset(&hmac, 0, sizeof(hmac));
   os_memset(&app_private_key, 0, sizeof(cx_ecfp_private_key_t));
@@ -127,8 +127,8 @@ bool u2f_crypto_unwrap(const uint8_t *keyHandle, uint16_t keyHandleLength,
   os_perso_derive_node_bip32(CX_CURVE_256R1, key_path, KEY_PATH_ENTRIES,
                              privateKeyData, NULL);
   cx_hmac_sha256_init(&hmac, privateKeyData, sizeof(privateKeyData));
-  cx_hmac(&hmac, 0, applicationParameter, 32, mac);
-  cx_hmac(&hmac, CX_LAST, keyHandle, KEY_PATH_LEN, mac);
+  cx_hmac(&hmac, 0, applicationParameter, 32, mac, 32);
+  cx_hmac(&hmac, CX_LAST, keyHandle, KEY_PATH_LEN, mac, 32);
   cx_ecdsa_init_private_key(CX_CURVE_256R1, privateKeyData, 32,
                             &app_private_key);
   os_memset(privateKeyData, 0, sizeof(privateKeyData));
@@ -149,7 +149,7 @@ uint16_t u2f_crypto_generate_key_and_wrap(const uint8_t *applicationParameter,
   // Generate specific key for the request
   cx_rng(nonce, sizeof(nonce));
   cx_hmac_sha256_init(&hmac, N_u2f.hmacKey, sizeof(N_u2f.hmacKey));
-  cx_hmac(&hmac, CX_LAST, nonce, sizeof(nonce), privateKeyData);
+  cx_hmac(&hmac, CX_LAST, nonce, sizeof(nonce), privateKeyData, 32);
   cx_ecdsa_init_private_key(CX_CURVE_256R1, privateKeyData, 32,
                             &app_private_key);
   cx_ecdsa_init_public_key(CX_CURVE_256R1, NULL, 0, &app_public_key);
@@ -158,8 +158,8 @@ uint16_t u2f_crypto_generate_key_and_wrap(const uint8_t *applicationParameter,
   // Compute its hash in the key handle
   os_memmove(keyHandle, nonce, 32);
   cx_hmac_sha256_init(&hmac, N_u2f.hmacKey, sizeof(N_u2f.hmacKey));
-  cx_hmac(&hmac, 0, applicationParameter, 32, keyHandle + 32);
-  cx_hmac(&hmac, CX_LAST, privateKeyData, 32, keyHandle + 32);
+  cx_hmac(&hmac, 0, applicationParameter, 32, keyHandle + 32, 32);
+  cx_hmac(&hmac, CX_LAST, privateKeyData, 32, keyHandle + 32, 32);
   os_memset(privateKeyData, 0, sizeof(privateKeyData));
   return KEY_HANDLE_LEN;
 }
@@ -173,12 +173,12 @@ bool u2f_crypto_unwrap(const uint8_t *keyHandle, uint16_t keyHandleLength,
     return false;
   }
   cx_hmac_sha256_init(&hmac, N_u2f.hmacKey, sizeof(N_u2f.hmacKey));
-  cx_hmac(&hmac, CX_LAST, keyHandle, 32, privateKeyData);
+  cx_hmac(&hmac, CX_LAST, keyHandle, 32, privateKeyData, 32);
   cx_ecdsa_init_private_key(CX_CURVE_256R1, privateKeyData, 32,
                             &app_private_key);
   cx_hmac_sha256_init(&hmac, N_u2f.hmacKey, sizeof(N_u2f.hmacKey));
-  cx_hmac(&hmac, 0, applicationParameter, 32, mac);
-  cx_hmac(&hmac, CX_LAST, privateKeyData, 32, mac);
+  cx_hmac(&hmac, 0, applicationParameter, 32, mac, 32);
+  cx_hmac(&hmac, CX_LAST, privateKeyData, 32, mac, 32);
   return compare_constantTime(mac, keyHandle + 32, 32);
 }
 
@@ -190,17 +190,19 @@ bool u2f_sign_init(void) {
 }
 
 bool u2f_sign_update(const uint8_t *message, uint16_t length) {
-  cx_hash(&hash.header, 0, message, length, NULL);
+  cx_hash(&hash.header, 0, message, length, NULL, 32);
   return true;
 }
 
 static uint16_t u2f_crypto_sign(cx_ecfp_private_key_t *privateKey,
                                 uint8_t *signature) {
   uint8_t hashData[32];
-  cx_hash(&hash.header, CX_LAST, hashData, 0, hashData);
+  cx_hash(&hash.header, CX_LAST, hashData, 0, hashData, 32);
   uint16_t length;
+  size_t domain_length;
+  cx_ecdomain_parameters_length(CX_CURVE_SECP256R1, &domain_length);
   length = cx_ecdsa_sign(privateKey, CX_RND_TRNG | CX_LAST, CX_NONE, hashData,
-                         sizeof(hashData), signature, NULL);
+                         sizeof(hashData), signature, 6 + 2 * (domain_length + 1), NULL);
   signature[0] = 0x30;
   return length;
 }

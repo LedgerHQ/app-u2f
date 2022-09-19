@@ -1,8 +1,10 @@
 
 #pragma once
 
-#include "stdint.h"
+#include <stdint.h>
 
+#include "os_id.h"
+#include "cx.h"
 //#include "main.h"
 #include "ble.h"
 #include "app_entry.h"
@@ -50,6 +52,15 @@ typedef struct ble_state_s {
 
 } ble_state_t;
 extern ble_state_t G_io_ble;
+
+typedef struct ble_secdb_state_s {
+  // the IO task cannot call nvm_write nor read from the nvram to load the security db, therefore it is synchronized here
+  // and it's the responsibility of the main task to propagate it to the nvram through ::os_perso_ble_pairing_db_load and ::os_perso_ble_pairing_db_save syscalls
+  bolos_bool_t changed;
+  unsigned char content[0x200];
+  unsigned int xfer_offset;
+} ble_secdb_state_t;
+extern ble_secdb_state_t G_io_ble_secdb;
 
 // Debug macro definitions
 //#define DEBUG_LIST

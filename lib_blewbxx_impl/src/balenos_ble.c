@@ -23,6 +23,7 @@
 #define CONN_MS_TO_UNIT(ms) ((unsigned int)((float)ms/(float)1.250))
 
 struct ble_state_s G_io_ble;
+ble_secdb_state_t G_io_ble_secdb;
 
 typedef struct ble_state_u2f_s {
   unsigned short u2f_controlpointlength_handle, u2f_servicerevision_handle, u2f_servicerevisionbitfield_handle;
@@ -930,7 +931,7 @@ void ble_pairing_ux_reply_passkey(unsigned int userstatus);
 void ble_pairing_ux_reply_numcomp(unsigned int userstatus);
 
 unsigned int ble_generate_rng_u32(void) {
-  return cx_rng_u32_inline();
+  return cx_rng_u32();
 }
 
 unsigned int ble_generate_pairing_code(void) {
