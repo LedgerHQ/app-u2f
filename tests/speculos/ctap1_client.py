@@ -1,9 +1,8 @@
 import struct
-import time
 
 from enum import IntEnum
 
-from ragger.navigator import NavInsID, NavIns
+from ragger.navigator import NavInsID
 
 from fido2.ctap1 import Ctap1, ApduError, RegistrationData, SignatureData
 from fido2.hid import CTAPHID
@@ -52,8 +51,19 @@ class LedgerCtap1(Ctap1):
         self.debug = debug
 
     def confirm(self):
-        instructions = [NavIns(NavInsID.BOTH_CLICK)]
+        if self.model == "stax":
+            instructions = [NavInsID.USE_CASE_CHOICE_CONFIRM]
+        else:
+            instructions = [NavInsID.BOTH_CLICK]
         self.navigator.navigate(instructions)
+
+    def wait_for_return_on_dashboard(self):
+        if self.model == "stax":
+            # On Stax tap on the center to dismiss the status message faster
+            self.navigator.navigate([NavInsID.TAPPABLE_CENTER_TAP])
+
+        self.navigator._backend.wait_for_screen_change()
+        # TODO check home screen displayed
 
     def parse_response(self, response):
         status = struct.unpack(">H", response[-2:])[0]
@@ -82,51 +92,70 @@ class LedgerCtap1(Ctap1):
     def register(self, client_param, app_param, user_accept=True,
                  check_screens=None, compare_args=None):
         # Refresh navigator screen content reference
-        time.sleep(0.1)
         self.navigator._backend.get_current_screen_content()
 
         data = client_param + app_param
         self.send_apdu_nowait(ins=Ctap1.INS.REGISTER, data=data)
 
         instructions = []
-        if user_accept and check_screens is None:
+
+        if self.model == "stax":
+            if user_accept:
+                instructions.append(NavInsID.USE_CASE_CHOICE_CONFIRM)
+            elif user_accept is not None:
+                instructions.append(NavInsID.USE_CASE_CHOICE_REJECT)
+        elif user_accept and check_screens is None:
             # Validate blindly
-            instructions.append(NavIns(NavInsID.BOTH_CLICK))
+            instructions.append(NavInsID.BOTH_CLICK)
         elif user_accept is not None:
             # check_screens == None only supported when user accept
             assert check_screens in ["full", "fast"]
 
             # Screen 0 -> 1
-            instructions.append(NavIns(NavInsID.RIGHT_CLICK))
+            instructions.append(NavInsID.RIGHT_CLICK)
 
             # Screen 1 -> 2
             if self.model == "nanos":
-                instructions += [NavIns(NavInsID.RIGHT_CLICK)] * 4
+                instructions += [NavInsID.RIGHT_CLICK] * 4
             else:
-                instructions += [NavIns(NavInsID.RIGHT_CLICK)] * 2
+                instructions += [NavInsID.RIGHT_CLICK] * 2
 
             if check_screens == "full":
                 # Screen 2 -> 0
-                instructions.append(NavIns(NavInsID.RIGHT_CLICK))
+                instructions.append(NavInsID.RIGHT_CLICK)
 
                 # Screen 0 -> 2
-                instructions.append(NavIns(NavInsID.LEFT_CLICK))
+                instructions.append(NavInsID.LEFT_CLICK)
 
             if user_accept:
                 # Screen 2 -> 0
-                instructions.append(NavIns(NavInsID.RIGHT_CLICK))
+                instructions.append(NavInsID.RIGHT_CLICK)
 
             # Validate
-            instructions.append(NavIns(NavInsID.BOTH_CLICK))
+            instructions.append(NavInsID.BOTH_CLICK)
 
         if check_screens:
             assert compare_args
             root, test_name = compare_args
-            # Home screen don't show before reception
-            self.navigator.navigate_and_compare(root, test_name, instructions,
-                                                screen_change_after_last_instruction=False)
-        else:
-            self.navigator.navigate(instructions)
+            # Over U2F endpoint (but not over HID) the device needs the
+            # response to be retrieved before continuing the UX flow.
+            # - On Nano devices, this means the home screen won't be displayed
+            #   until the response is retrieved.
+            # - On Stax device, this mean the status screen will be displayed
+            #   but the response should be retrieved immediately, without
+            #   waiting for the end of the status screen or a timeout will be raised.
+            if self.model == "stax":
+                self.navigator.navigate_and_compare(root, test_name, instructions,
+                                                    screen_change_after_last_instruction=True)
+            else:
+                self.navigator.navigate_and_compare(root, test_name, instructions,
+                                                    screen_change_after_last_instruction=False)
+        elif instructions:
+            for instruction in instructions:
+                self.navigator._backend.wait_for_screen_change()
+                self.navigator.navigate([instruction])
+            if self.model == "stax":
+                self.navigator._backend.wait_for_screen_change()
 
         response = self.device.recv(CTAPHID.MSG)
         try:
@@ -142,9 +171,12 @@ class LedgerCtap1(Ctap1):
                 response = self.device.recv(CTAPHID.MSG)
                 response = self.parse_response(response)
             else:
+                if user_accept is not None:
+                    self.wait_for_return_on_dashboard()
                 raise e
 
-        # TODO check home screen displayed
+        if user_accept is not None:
+            self.wait_for_return_on_dashboard()
 
         return RegistrationData(response)
 
@@ -152,7 +184,6 @@ class LedgerCtap1(Ctap1):
                      check_only=False, user_accept=True,
                      check_screens=None, compare_args=None):
         # Refresh navigator screen content reference
-        time.sleep(0.1)
         self.navigator._backend.get_current_screen_content()
 
         key_handle_len = struct.pack(">B", len(key_handle))
@@ -161,48 +192,63 @@ class LedgerCtap1(Ctap1):
         self.send_apdu_nowait(ins=Ctap1.INS.AUTHENTICATE, p1=p1, data=data)
 
         instructions = []
-        if user_accept and check_screens is None:
+        if self.model == "stax":
+            if user_accept:
+                instructions.append(NavInsID.USE_CASE_CHOICE_CONFIRM)
+            elif user_accept is not None:
+                instructions.append(NavInsID.USE_CASE_CHOICE_REJECT)
+        elif user_accept and check_screens is None:
             # Validate blindly
-            instructions.append(NavIns(NavInsID.BOTH_CLICK))
-
-            # Still give time for screen thread to parse screen
-            time.sleep(0.1)
-
+            instructions.append(NavInsID.BOTH_CLICK)
         elif user_accept is not None:
             # check_screens == None only supported when user accept
             assert check_screens in ["full", "fast"]
 
             # Screen 0 -> 1
-            instructions.append(NavIns(NavInsID.RIGHT_CLICK))
+            instructions.append(NavInsID.RIGHT_CLICK)
 
             # Screen 1 -> 2
             if self.model == "nanos":
-                instructions += [NavIns(NavInsID.RIGHT_CLICK)] * 4
+                instructions += [NavInsID.RIGHT_CLICK] * 4
             else:
-                instructions += [NavIns(NavInsID.RIGHT_CLICK)] * 2
+                instructions += [NavInsID.RIGHT_CLICK] * 2
 
             if check_screens == "full":
                 # Screen 2 -> 0
-                instructions.append(NavIns(NavInsID.RIGHT_CLICK))
+                instructions.append(NavInsID.RIGHT_CLICK)
 
                 # Screen 0 -> 2
-                instructions.append(NavIns(NavInsID.LEFT_CLICK))
+                instructions.append(NavInsID.LEFT_CLICK)
 
             if user_accept:
                 # Screen 2 -> 0
-                instructions.append(NavIns(NavInsID.RIGHT_CLICK))
+                instructions.append(NavInsID.RIGHT_CLICK)
 
             # Validate
-            instructions.append(NavIns(NavInsID.BOTH_CLICK))
+            instructions.append(NavInsID.BOTH_CLICK)
 
         if check_screens:
             assert compare_args
             root, test_name = compare_args
-            # Home screen don't show before reception
-            self.navigator.navigate_and_compare(root, test_name, instructions,
-                                                screen_change_after_last_instruction=False)
-        else:
-            self.navigator.navigate(instructions)
+            # Over U2F endpoint (but not over HID) the device needs the
+            # response to be retrieved before continuing the UX flow.
+            # - On Nano devices, this means the home screen won't be displayed
+            #   until the response is retrieved.
+            # - On Stax device, this mean the status screen will be displayed
+            #   but the response should be retrieved immediately, without
+            #   waiting for the end of the status screen or a timeout will be raised.
+            if self.model == "stax":
+                self.navigator.navigate_and_compare(root, test_name, instructions,
+                                                    screen_change_after_last_instruction=True)
+            else:
+                self.navigator.navigate_and_compare(root, test_name, instructions,
+                                                    screen_change_after_last_instruction=False)
+        elif instructions:
+            for instruction in instructions:
+                self.navigator._backend.wait_for_screen_change()
+                self.navigator.navigate([instruction])
+            if self.model == "stax":
+                self.navigator._backend.wait_for_screen_change()
 
         response = self.device.recv(CTAPHID.MSG)
         try:
@@ -219,8 +265,11 @@ class LedgerCtap1(Ctap1):
                 response = self.device.recv(CTAPHID.MSG)
                 response = self.parse_response(response)
             else:
+                if user_accept is not None:
+                    self.wait_for_return_on_dashboard()
                 raise e
 
-        # TODO check home screen displayed
+        if user_accept is not None:
+            self.wait_for_return_on_dashboard()
 
         return SignatureData(response)

@@ -16,6 +16,8 @@ jobs:
           name: nanox
         - path: $NANOSP_SDK
           name: nanosp
+        - path: $STAX_SDK
+          name: stax
 
     runs-on: ubuntu-latest
     container:
@@ -75,12 +77,13 @@ jobs:
           - model: nanos
             args: "--transport HID --fast"
 
+          - model: stax
+            args: "--fast"
+
     needs:
       - app_build
 
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/ledgerhq/speculos:latest
 
     steps:
       - name: Clone
@@ -95,7 +98,7 @@ jobs:
           mv *_binaries/*.elf tests/elfs
 
       - name: Install APT dependencies
-        run: apt-get update && apt-get install -y gcc
+        run: sudo apt-get update && sudo apt-get install -y qemu-user-static tesseract-ocr libtesseract-dev
 
       - name: Install tests dependencies
         run: |
