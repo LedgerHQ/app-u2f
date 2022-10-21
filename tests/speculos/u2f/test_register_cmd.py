@@ -3,6 +3,8 @@ import socket
 
 from cryptography.x509 import load_der_x509_certificate
 
+from ragger.navigator import NavInsID, NavIns
+
 import fido2
 
 from fido2.ctap1 import ApduError, Ctap1, RegistrationData
@@ -229,6 +231,10 @@ def test_register_raw_u2f_fake_channel_security_crc(client):
         with pytest.raises(socket.timeout) as e:
             response = client.ctap1.device.recv(CTAPHID.MSG)
 
+        if client.model == "stax":
+            # Patch issue with click ignored on Speculos after a EXCEPTION_IO_RESET
+            client.navigator.navigate([NavIns(NavInsID.TAPPABLE_CENTER_TAP)])
+
         # App should then recover and allow new requests
         registration_data = client.ctap1.register(challenge, app_param)
         registration_data.verify(app_param, challenge)
@@ -273,6 +279,10 @@ def test_register_raw_u2f_fake_channel_security_length(client):
 
     with pytest.raises(socket.timeout) as e:
         response = client.ctap1.device.recv(CTAPHID.MSG)
+
+    if client.model == "stax":
+        # Patch issue with click ignored on Speculos after a EXCEPTION_IO_RESET
+        client.navigator.navigate([NavIns(NavInsID.TAPPABLE_CENTER_TAP)])
 
     # App should then recover and allow new requests
     registration_data = client.ctap1.register(challenge, app_param)

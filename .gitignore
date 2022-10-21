@@ -23,6 +23,7 @@ doc/latex
 
 # Prod private keys should not be committed
 attestations/data/prod/*/*priv-key.*
+attestations/data/prod/*priv-key.*
 
 tests/elfs/
 tests/speculos/snapshots-tmp/

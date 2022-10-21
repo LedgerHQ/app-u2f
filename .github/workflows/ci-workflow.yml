@@ -16,6 +16,8 @@ jobs:
           name: nanox
         - path: $NANOSP_SDK
           name: nanosp
+        - path: $STAX_SDK
+          name: stax
 
     runs-on: ubuntu-latest
     container:
@@ -74,6 +76,9 @@ jobs:
 
           - model: nanos
             args: "--transport HID --fast"
+
+          - model: stax
+            args: "--fast"
 
     needs:
       - app_build

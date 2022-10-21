@@ -2,7 +2,7 @@ import pytest
 from pathlib import Path
 from ragger.firmware import Firmware
 from ragger.backend import SpeculosBackend
-from ragger.navigator import NanoNavigator
+from ragger.navigator import NanoNavigator, StaxNavigator
 from ragger.utils import app_path_from_app_name
 
 from client import TestClient
@@ -15,11 +15,12 @@ APP_NAME = "u2f"
 
 BACKENDS = ["speculos"]
 
-DEVICES = ["nanos", "nanox", "nanosp", "all"]
+DEVICES = ["nanos", "nanox", "nanosp", "stax", "all"]
 
 FIRMWARES = [Firmware('nanos', '2.1'),
              Firmware('nanox', '2.0.2'),
-             Firmware('nanosp', '1.0.3')]
+             Firmware('nanosp', '1.0.3'),
+             Firmware('stax', '1.0')]
 
 
 def pytest_addoption(parser):
@@ -122,6 +123,8 @@ def backend(backend_name, firmware, display, transport):
 def navigator(backend, firmware, golden_run):
     if firmware.device.startswith("nano"):
         return NanoNavigator(backend, firmware, golden_run)
+    elif firmware.device.startswith("stax"):
+        return StaxNavigator(backend, firmware, golden_run)
     else:
         raise ValueError(f"Device '{firmware.device}' is unsupported.")
 
