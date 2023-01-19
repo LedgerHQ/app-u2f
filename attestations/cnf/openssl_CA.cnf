@@ -1,0 +1,30 @@
+RANDFILE = .rnd
+
+####################################################################
+[ ca ]
+default_ca = CA_default # The default ca section
+
+####################################################################
+[ CA_default ]
+
+serial = data/serial # The current serial number
+
+x509_extensions = x509v3_extensions # The extensions to add to the cert
+
+####################################################################
+[req]
+distinguished_name = req_distinguished_name
+prompt = no
+
+[req_distinguished_name]
+C = FR
+O = Ledger
+CN = Ledger FIDO Attestation CA
+
+[x509v3_extensions]
+
+[v3_ca]
+
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always,issuer:always
+basicConstraints       = CA:true
