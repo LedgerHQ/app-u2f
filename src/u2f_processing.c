@@ -514,24 +514,24 @@ enum { REGISTER_TOKEN = 0, LOGIN_TOKEN, TITLE_TOKEN };
 static void u2f_review_register_choice(bool confirm) {
     if (confirm) {
         uint16_t tx = u2f_process_user_presence_confirmed();
-        nbgl_useCaseStatus("REGISTRATION\nDONE", true, ui_idle);
         io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+        nbgl_useCaseStatus("REGISTRATION\nDONE", true, ui_idle);
     } else {
         uint16_t tx = u2f_process_user_presence_cancelled();
-        nbgl_useCaseStatus("Registration\ncancelled", false, ui_idle);
         io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+        nbgl_useCaseStatus("Registration\ncancelled", false, ui_idle);
     }
 }
 
 static void u2f_review_login_choice(bool confirm) {
     if (confirm) {
         uint16_t tx = u2f_process_user_presence_confirmed();
-        nbgl_useCaseStatus("AUTHENTICATION\nSHARED", true, ui_idle);
         io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+        nbgl_useCaseStatus("AUTHENTICATION\nSHARED", true, ui_idle);
     } else {
         uint16_t tx = u2f_process_user_presence_cancelled();
-        nbgl_useCaseStatus("Authentication\ncancelled", false, ui_idle);
         io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+        nbgl_useCaseStatus("Authentication\ncancelled", false, ui_idle);
     }
 }
 

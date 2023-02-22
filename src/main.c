@@ -74,10 +74,6 @@ unsigned char io_event(unsigned char channel) {
             break;
     }
 
-    if (!io_seproxyhal_spi_is_status_sent()) {
-        io_seproxyhal_general_status();
-    }
-
     // command has been processed, DO NOT reset the current APDU transport
     return 1;
 }

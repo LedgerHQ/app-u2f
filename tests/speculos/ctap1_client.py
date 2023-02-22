@@ -60,6 +60,7 @@ class LedgerCtap1(Ctap1):
     def wait_for_return_on_dashboard(self):
         if self.model == "stax":
             # On Stax tap on the center to dismiss the status message faster
+            self.navigator._backend.wait_for_screen_change()
             self.navigator.navigate([NavInsID.TAPPABLE_CENTER_TAP])
 
         self.navigator._backend.wait_for_screen_change()
@@ -139,23 +140,12 @@ class LedgerCtap1(Ctap1):
             root, test_name = compare_args
             # Over U2F endpoint (but not over HID) the device needs the
             # response to be retrieved before continuing the UX flow.
-            # - On Nano devices, this means the home screen won't be displayed
-            #   until the response is retrieved.
-            # - On Stax device, this mean the status screen will be displayed
-            #   but the response should be retrieved immediately, without
-            #   waiting for the end of the status screen or a timeout will be raised.
-            if self.model == "stax":
-                self.navigator.navigate_and_compare(root, test_name, instructions,
-                                                    screen_change_after_last_instruction=True)
-            else:
-                self.navigator.navigate_and_compare(root, test_name, instructions,
-                                                    screen_change_after_last_instruction=False)
+            self.navigator.navigate_and_compare(root, test_name, instructions,
+                                                screen_change_after_last_instruction=False)
         elif instructions:
             for instruction in instructions:
                 self.navigator._backend.wait_for_screen_change()
                 self.navigator.navigate([instruction])
-            if self.model == "stax":
-                self.navigator._backend.wait_for_screen_change()
 
         response = self.device.recv(CTAPHID.MSG)
         try:
@@ -232,23 +222,12 @@ class LedgerCtap1(Ctap1):
             root, test_name = compare_args
             # Over U2F endpoint (but not over HID) the device needs the
             # response to be retrieved before continuing the UX flow.
-            # - On Nano devices, this means the home screen won't be displayed
-            #   until the response is retrieved.
-            # - On Stax device, this mean the status screen will be displayed
-            #   but the response should be retrieved immediately, without
-            #   waiting for the end of the status screen or a timeout will be raised.
-            if self.model == "stax":
-                self.navigator.navigate_and_compare(root, test_name, instructions,
-                                                    screen_change_after_last_instruction=True)
-            else:
-                self.navigator.navigate_and_compare(root, test_name, instructions,
-                                                    screen_change_after_last_instruction=False)
+            self.navigator.navigate_and_compare(root, test_name, instructions,
+                                                screen_change_after_last_instruction=False)
         elif instructions:
             for instruction in instructions:
                 self.navigator._backend.wait_for_screen_change()
                 self.navigator.navigate([instruction])
-            if self.model == "stax":
-                self.navigator._backend.wait_for_screen_change()
 
         response = self.device.recv(CTAPHID.MSG)
         try:
