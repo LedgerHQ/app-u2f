@@ -3,24 +3,20 @@ from pathlib import Path
 from ragger.firmware import Firmware
 from ragger.backend import SpeculosBackend
 from ragger.navigator import NanoNavigator, StaxNavigator
-from ragger.utils import app_path_from_app_name
+from ragger.utils import find_project_root_dir
 
 from client import TestClient
-
-
-# This variable is needed for Speculos only
-APPS_DIRECTORY = (Path(__file__).parent.parent / "elfs").resolve()
-
-APP_NAME = "u2f"
 
 BACKENDS = ["speculos"]
 
 DEVICES = ["nanos", "nanox", "nanosp", "stax", "all"]
 
-FIRMWARES = [Firmware('nanos', '2.1'),
-             Firmware('nanox', '2.0.2'),
-             Firmware('nanosp', '1.0.3'),
-             Firmware('stax', '1.0')]
+FIRMWARES = [
+    Firmware('nanos', '2.1'),
+    Firmware('nanox', '2.0.2'),
+    Firmware('nanosp', '1.0.4'),
+    Firmware('stax', '1.0'),
+]
 
 
 def pytest_addoption(parser):
@@ -45,6 +41,11 @@ def display(pytestconfig):
 @pytest.fixture(scope="session")
 def golden_run(pytestconfig):
     return pytestconfig.getoption("golden_run")
+
+
+@pytest.fixture(scope="session")
+def root_pytest_dir(request):
+    return Path(request.config.rootpath).resolve()
 
 
 @pytest.fixture(scope="session")
@@ -91,31 +92,42 @@ def pytest_generate_tests(metafunc):
         metafunc.parametrize("firmware", fw_list, ids=ids, scope="session")
 
 
-def prepare_speculos_args(firmware: Firmware, display: bool, transport: str):
-    speculos_args = ['--usb', transport]
+def prepare_speculos_args(root_pytest_dir: Path, firmware: Firmware, display: bool, transport: str):
+    speculos_args = ["--usb", transport]
 
     if display:
         speculos_args += ["--display", "qt"]
 
-    app_path = app_path_from_app_name(APPS_DIRECTORY, APP_NAME, firmware.device)
+    device = firmware.device
+    if device == "nanosp":
+        device = "nanos2"
 
-    return ([app_path], {"args": speculos_args})
+    # Find the compiled application for the requested device
+    project_root_dir = find_project_root_dir(root_pytest_dir)
+
+    app_path = Path(project_root_dir / "build" / device / "bin" / "app.elf").resolve()
+    if not app_path.is_file():
+        raise ValueError(f"File '{app_path}' missing. Did you compile for this target?")
+
+    return (app_path, {"args": speculos_args})
 
 
 # Depending on the "--backend" option value, a different backend is
 # instantiated, and the tests will either run on Speculos or on a physical
 # device depending on the backend
-def create_backend(backend_name: str, firmware: Firmware, display: bool, transport: str):
+def create_backend(root_pytest_dir: Path, backend_name: str, firmware: Firmware, display: bool, transport: str):
     if backend_name.lower() == "speculos":
-        args, kwargs = prepare_speculos_args(firmware, display, transport)
-        return SpeculosBackend(*args, firmware, **kwargs)
+        app_path, speculos_args = prepare_speculos_args(root_pytest_dir, firmware, display, transport)
+        return SpeculosBackend(app_path,
+                               firmware=firmware,
+                               **speculos_args)
     else:
         raise ValueError(f"Backend '{backend_name}' is unknown. Valid backends are: {BACKENDS}")
 
 
 @pytest.fixture(scope="session")
-def backend(backend_name, firmware, display, transport):
-    with create_backend(backend_name, firmware, display, transport) as b:
+def backend(root_pytest_dir, backend_name, firmware, display, transport):
+    with create_backend(root_pytest_dir, backend_name, firmware, display, transport) as b:
         yield b
 
 
