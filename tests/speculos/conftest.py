@@ -115,9 +115,11 @@ def prepare_speculos_args(root_pytest_dir: Path, firmware: Firmware, display: bo
 # Depending on the "--backend" option value, a different backend is
 # instantiated, and the tests will either run on Speculos or on a physical
 # device depending on the backend
-def create_backend(root_pytest_dir: Path, backend_name: str, firmware: Firmware, display: bool, transport: str):
+def create_backend(root_pytest_dir: Path, backend_name: str,
+                   firmware: Firmware, display: bool, transport: str):
     if backend_name.lower() == "speculos":
-        app_path, speculos_args = prepare_speculos_args(root_pytest_dir, firmware, display, transport)
+        app_path, speculos_args = prepare_speculos_args(root_pytest_dir, firmware,
+                                                        display, transport)
         return SpeculosBackend(app_path,
                                firmware=firmware,
                                **speculos_args)
