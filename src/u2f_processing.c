@@ -508,6 +508,7 @@ UX_FLOW(ux_login_flow,
 #include "nbgl_layout.h"
 
 static nbgl_layoutTagValue_t pairs[2];
+static nbgl_layout_t *layout;
 
 enum { REGISTER_TOKEN = 0, LOGIN_TOKEN, TITLE_TOKEN };
 
@@ -536,6 +537,9 @@ static void u2f_review_login_choice(bool confirm) {
 }
 
 static void onActionCallback(int token, uint8_t index) {
+    // Release the review layout.
+    nbgl_layoutRelease(layout);
+
     if (token == REGISTER_TOKEN) {
         u2f_review_register_choice(index == 0);
     } else if (token == LOGIN_TOKEN) {
@@ -545,7 +549,6 @@ static void onActionCallback(int token, uint8_t index) {
 
 static void start_review(uint8_t token, const char *confirm_text) {
     nbgl_layoutDescription_t layoutDescription;
-    nbgl_layout_t *layout;
 
     layoutDescription.modal = false;
     layoutDescription.withLeftBorder = true;
@@ -591,14 +594,6 @@ static void start_review(uint8_t token, const char *confirm_text) {
     nbgl_refresh();
 }
 
-static void u2f_review_register(void) {
-    start_review(REGISTER_TOKEN, "Register");
-}
-
-static void u2f_review_login(void) {
-    start_review(LOGIN_TOKEN, "Login");
-}
-
 #endif
 
 static void u2f_prompt_user_presence(bool enroll, uint8_t *applicationParameter) {
@@ -624,9 +619,9 @@ static void u2f_prompt_user_presence(bool enroll, uint8_t *applicationParameter)
     }
 #elif defined(HAVE_NBGL)
     if (enroll) {
-        u2f_review_register();
+        start_review(REGISTER_TOKEN, "Register");
     } else {
-        u2f_review_login();
+        start_review(LOGIN_TOKEN, "Login");
     }
 #endif
 }

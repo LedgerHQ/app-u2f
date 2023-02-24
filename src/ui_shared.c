@@ -65,7 +65,7 @@ void ui_idle(void) {
 // 'About' menu
 
 static const char* const INFO_TYPES[] = {"Version", "Copyright"};
-static const char* const INFO_CONTENTS[] = {APPVERSION, "(c) 2022 Ledger"};
+static const char* const INFO_CONTENTS[] = {APPVERSION, "(c) 2023 Ledger"};
 
 static bool nav_callback(uint8_t page, nbgl_pageContent_t* content) {
     UNUSED(page);
