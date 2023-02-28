@@ -61,7 +61,7 @@ class LedgerCtap1(Ctap1):
         if self.model == "stax":
             # On Stax tap on the center to dismiss the status message faster
             self.navigator._backend.wait_for_screen_change()
-            self.navigator.navigate([NavInsID.TAPPABLE_CENTER_TAP])
+            self.navigator.navigate([NavInsID.USE_CASE_STATUS_DISMISS])
 
         self.navigator._backend.wait_for_screen_change()
         # TODO check home screen displayed
