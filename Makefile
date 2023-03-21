@@ -124,7 +124,10 @@ DEFINES += HAVE_UX_STACK_INIT_KEEP_TICKER
 # Used to initialize app counter to current timestamp directly in the app bin code
 # when the app is streamed from the HSM.
 # This is necessary to never use the counter with a lower value than previous calls.
+# This means that the app APDU will be patched when streamed from the HSM and therefore
+# the apdu should not contain a crc.
 DEFINES += HAVE_COUNTER_MARKER
+APP_LOAD_PARAMS += --nocrc
 
 # Used to disable user presence check.
 # This is against U2F standard and should be used only for development purposes.
