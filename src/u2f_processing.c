@@ -421,6 +421,8 @@ static int u2f_process_user_presence_cancelled(void) {
 /*             U2F UX Flows               */
 /******************************************/
 
+#if defined(HAVE_BAGL)
+
 static unsigned int u2f_callback_cancel(const bagl_element_t *element) {
     UNUSED(element);
 
@@ -499,6 +501,101 @@ UX_FLOW(ux_login_flow,
         &ux_login_flow_2_step,
         FLOW_LOOP);
 
+#elif defined(HAVE_NBGL)
+
+#include "nbgl_use_case.h"
+#include "nbgl_page.h"
+#include "nbgl_layout.h"
+
+static nbgl_layoutTagValue_t pairs[2];
+static nbgl_layout_t *layout;
+
+enum { REGISTER_TOKEN = 0, LOGIN_TOKEN, TITLE_TOKEN };
+
+static void u2f_review_register_choice(bool confirm) {
+    if (confirm) {
+        uint16_t tx = u2f_process_user_presence_confirmed();
+        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+        nbgl_useCaseStatus("REGISTRATION\nDONE", true, ui_idle);
+    } else {
+        uint16_t tx = u2f_process_user_presence_cancelled();
+        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+        nbgl_useCaseStatus("Registration\ncancelled", false, ui_idle);
+    }
+}
+
+static void u2f_review_login_choice(bool confirm) {
+    if (confirm) {
+        uint16_t tx = u2f_process_user_presence_confirmed();
+        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+        nbgl_useCaseStatus("AUTHENTICATION\nSHARED", true, ui_idle);
+    } else {
+        uint16_t tx = u2f_process_user_presence_cancelled();
+        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+        nbgl_useCaseStatus("Authentication\ncancelled", false, ui_idle);
+    }
+}
+
+static void onActionCallback(int token, uint8_t index) {
+    // Release the review layout.
+    nbgl_layoutRelease(layout);
+
+    if (token == REGISTER_TOKEN) {
+        u2f_review_register_choice(index == 0);
+    } else if (token == LOGIN_TOKEN) {
+        u2f_review_login_choice(index == 0);
+    }
+}
+
+static void start_review(uint8_t token, const char *confirm_text) {
+    nbgl_layoutDescription_t layoutDescription;
+
+    layoutDescription.modal = false;
+    layoutDescription.withLeftBorder = true;
+    layoutDescription.onActionCallback = onActionCallback;
+    layoutDescription.tapActionText = NULL;
+    layoutDescription.ticker.tickerCallback = NULL;
+
+    layout = nbgl_layoutGet(&layoutDescription);
+
+    nbgl_layoutBar_t bar;
+    bar.text = APPNAME;
+    bar.subText = NULL;
+    bar.iconRight = NULL;
+    bar.iconLeft = NULL;
+    bar.token = TITLE_TOKEN;
+    bar.centered = true;
+    bar.inactive = false;
+    bar.tuneId = TUNE_TAP_CASUAL;
+    nbgl_layoutAddTouchableBar(layout, &bar);
+    nbgl_layoutAddSeparationLine(layout);
+
+    nbgl_layoutTagValueList_t tagValueList;
+    pairs[0].item = "Domain";
+    pairs[0].value = verifyName;
+    pairs[1].item = "Domain id hash";
+    pairs[1].value = verifyHash;
+    tagValueList.nbPairs = 2;
+    tagValueList.pairs = pairs;
+    tagValueList.smallCaseForValue = false;
+    tagValueList.nbMaxLinesForValue = 0;
+    tagValueList.wrapping = false;
+    nbgl_layoutAddTagValueList(layout, &tagValueList);
+
+    nbgl_layoutChoiceButtons_t buttonsInfo = {.bottomText = (char *) PIC("Cancel"),
+                                              .token = token,
+                                              .topText = (char *) PIC(confirm_text),
+                                              .style = ROUNDED_AND_FOOTER_STYLE,
+                                              .tuneId = TUNE_TAP_CASUAL};
+    nbgl_layoutAddChoiceButtons(layout, &buttonsInfo);
+
+    nbgl_layoutDraw(layout);
+
+    nbgl_refresh();
+}
+
+#endif
+
 static void u2f_prompt_user_presence(bool enroll, uint8_t *applicationParameter) {
     UX_WAKE_UP();
 
@@ -510,12 +607,20 @@ static void u2f_prompt_user_presence(bool enroll, uint8_t *applicationParameter)
         strlcpy(verifyName, name, sizeof(verifyName));
     }
 
+#if defined(HAVE_BAGL)
     G_ux.externalText = NULL;
     if (enroll) {
         ux_flow_init(0, ux_register_flow, NULL);
     } else {
         ux_flow_init(0, ux_login_flow, NULL);
     }
+#elif defined(HAVE_NBGL)
+    if (enroll) {
+        start_review(REGISTER_TOKEN, "Register");
+    } else {
+        start_review(LOGIN_TOKEN, "Login");
+    }
+#endif
 }
 
 /******************************************/

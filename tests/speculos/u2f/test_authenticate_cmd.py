@@ -1,6 +1,7 @@
 import cryptography
 import pytest
 import struct
+import time
 
 from fido2.ctap1 import Ctap1, ApduError, SignatureData
 from fido2.hid import CTAPHID
@@ -322,7 +323,12 @@ def test_authenticate_raw(client):
         else:
             # On U2F endpoint, the device should return APDU.SW_CONDITIONS_NOT_SATISFIED
             # until user validate.
-            for i in range(10):
+            for i in range(5):
+
+                if client.model == "stax":
+                    # Patch issue with more time needed on Stax on CI or slow computers
+                    time.sleep(0.5)
+
                 client.ctap1.send_apdu_nowait(ins=Ctap1.INS.AUTHENTICATE,
                                               p1=p1, data=data)
 
@@ -340,6 +346,7 @@ def test_authenticate_raw(client):
                                           p1=p1, data=data)
 
             response = client.ctap1.device.recv(CTAPHID.MSG)
+            client.ctap1.wait_for_return_on_dashboard()
             response = client.ctap1.parse_response(response)
 
             authentication_data = SignatureData(response)

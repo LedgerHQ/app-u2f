@@ -21,7 +21,7 @@ endif
 include $(BOLOS_SDK)/Makefile.defines
 
 $(info TARGET_NAME=$(TARGET_NAME))
-ifneq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOS TARGET_NANOX TARGET_NANOS2))
+ifneq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOS TARGET_NANOX TARGET_NANOS2 TARGET_STAX))
 $(error Environment variable TARGET_NAME is not valid or not supported)
 endif
 
@@ -33,12 +33,14 @@ APP_LOAD_PARAMS += --appFlags 0x040
 APP_LOAD_PARAMS += $(COMMON_LOAD_PARAMS)
 
 APPVERSION_M=1
-APPVERSION_N=2
-APPVERSION_P=10
+APPVERSION_N=3
+APPVERSION_P=0
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
 ifeq ($(TARGET_NAME),TARGET_NANOS)
 ICONNAME=icons/icon_id_nanos.gif
+else ifeq ($(TARGET_NAME),TARGET_STAX)
+ICONNAME=icons/stax_id_32px.gif
 else
 ICONNAME=icons/icon_id.gif
 endif
@@ -67,6 +69,11 @@ ifneq ($(PROD_U2F_NANOSP_PRIVATE_KEY),0)
     DEFINES += PROD_U2F_NANOSP_PRIVATE_KEY=${PROD_U2F_NANOSP_PRIVATE_KEY}
 endif
 
+PROD_U2F_STAX_PRIVATE_KEY?=0
+ifneq ($(PROD_U2F_STAX_PRIVATE_KEY),0)
+    DEFINES += PROD_U2F_STAX_PRIVATE_KEY=${PROD_U2F_STAX_PRIVATE_KEY}
+endif
+
 ############
 # Platform #
 ############
@@ -81,10 +88,11 @@ DEFINES += USB_SEGMENT_SIZE=64
 DEFINES += CUSTOM_IO_APDU_BUFFER_SIZE=1031 # 1024 + 7
 DEFINES += UNUSED\(x\)=\(void\)x
 DEFINES += APPVERSION=\"$(APPVERSION)\"
+CFLAGS  += -DAPPNAME=\"Fido\ U2F\"
 
-# Enforce SDK that supports UX Flow for Nano all targets, Nano S included
-DEFINES += HAVE_UX_FLOW
-DEFINES += HAVE_BAGL
+ifneq ($(TARGET_NAME),TARGET_STAX)
+DEFINES += HAVE_BAGL HAVE_UX_FLOW
+endif
 
 ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_NANOS2))
 DEFINES += HAVE_GLO096
@@ -116,7 +124,10 @@ DEFINES += HAVE_UX_STACK_INIT_KEEP_TICKER
 # Used to initialize app counter to current timestamp directly in the app bin code
 # when the app is streamed from the HSM.
 # This is necessary to never use the counter with a lower value than previous calls.
+# This means that the app APDU will be patched when streamed from the HSM and therefore
+# the apdu should not contain a crc.
 DEFINES += HAVE_COUNTER_MARKER
+APP_LOAD_PARAMS += --nocrc
 
 # Used to disable user presence check.
 # This is against U2F standard and should be used only for development purposes.
@@ -146,7 +157,11 @@ include $(BOLOS_SDK)/Makefile.glyphs
 
 # Define directory to build
 APP_SOURCE_PATH  += src
-SDK_SOURCE_PATH  += lib_stusb lib_ux lib_u2f lib_stusb_impl
+SDK_SOURCE_PATH  += lib_stusb lib_u2f lib_stusb_impl
+
+ifneq ($(TARGET_NAME),TARGET_STAX)
+SDK_SOURCE_PATH += lib_ux
+endif
 
 load: all
 	python3 -m ledgerblue.loadApp $(APP_LOAD_PARAMS)
