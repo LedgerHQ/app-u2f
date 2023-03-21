@@ -8,16 +8,22 @@ from client import TESTS_SPECULOS_DIR
 from utils import generate_random_bytes, fido_known_appid
 
 
-def test_u2f_screens_idle(client, test_name):
+def test_u2f_screens_idle(client, test_name, firmware):
     # Refresh navigator screen content reference
     time.sleep(0.1)
     client.navigator._backend.get_current_screen_content()
 
-    instructions = []
-    # Screen 0 -> 1
-    instructions.append(NavIns(NavInsID.RIGHT_CLICK))
-    # Screen 1 -> 2
-    instructions.append(NavIns(NavInsID.RIGHT_CLICK))
+    if firmware.device.startswith("nano"):
+        instructions = []
+        # Screen 0 -> 1
+        instructions.append(NavIns(NavInsID.RIGHT_CLICK))
+        # Screen 1 -> 2
+        instructions.append(NavIns(NavInsID.RIGHT_CLICK))
+    else:
+        instructions = [
+            NavIns(NavInsID.USE_CASE_HOME_INFO),
+            NavIns(NavInsID.USE_CASE_SETTINGS_SINGLE_PAGE_EXIT)
+        ]
 
     client.navigator.navigate_and_compare(TESTS_SPECULOS_DIR, test_name, instructions,
                                           screen_change_before_first_instruction=False)

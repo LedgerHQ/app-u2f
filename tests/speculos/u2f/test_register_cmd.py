@@ -1,7 +1,10 @@
 import pytest
 import socket
+import time
 
 from cryptography.x509 import load_der_x509_certificate
+
+from ragger.navigator import NavInsID, NavIns
 
 import fido2
 
@@ -149,7 +152,12 @@ def test_register_raw(client):
 
     # On U2F endpoint, the device should return APDU.SW_CONDITIONS_NOT_SATISFIED
     # until user validate.
-    for i in range(10):
+    for i in range(5):
+
+        if client.model == "stax":
+            # Patch issue with more time needed on Stax on CI or slow computers
+            time.sleep(0.5)
+
         client.ctap1.send_apdu_nowait(cla=0x00,
                                       ins=Ctap1.INS.REGISTER,
                                       p1=0x00,
@@ -173,6 +181,7 @@ def test_register_raw(client):
                                   data=data)
 
     response = client.ctap1.device.recv(CTAPHID.MSG)
+    client.ctap1.wait_for_return_on_dashboard()
     response = client.ctap1.parse_response(response)
 
     registration_data = RegistrationData(response)
@@ -229,6 +238,10 @@ def test_register_raw_u2f_fake_channel_security_crc(client):
         with pytest.raises(socket.timeout) as e:
             response = client.ctap1.device.recv(CTAPHID.MSG)
 
+        if client.model == "stax":
+            # Patch issue with click ignored on Speculos after a EXCEPTION_IO_RESET
+            client.navigator.navigate([NavIns(NavInsID.TAPPABLE_CENTER_TAP)])
+
         # App should then recover and allow new requests
         registration_data = client.ctap1.register(challenge, app_param)
         registration_data.verify(app_param, challenge)
@@ -273,6 +286,10 @@ def test_register_raw_u2f_fake_channel_security_length(client):
 
     with pytest.raises(socket.timeout) as e:
         response = client.ctap1.device.recv(CTAPHID.MSG)
+
+    if client.model == "stax":
+        # Patch issue with click ignored on Speculos after a EXCEPTION_IO_RESET
+        client.navigator.navigate([NavIns(NavInsID.TAPPABLE_CENTER_TAP)])
 
     # App should then recover and allow new requests
     registration_data = client.ctap1.register(challenge, app_param)

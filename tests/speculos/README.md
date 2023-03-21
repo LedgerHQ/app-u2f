@@ -20,7 +20,7 @@ You can use for this the container `ghcr.io/ledgerhq/ledger-app-builder/ledger-a
 docker pull ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest
 cd <your app repository>                        # replace <appname> with the name of your app, (eg boilerplate)
 docker run --user "$(id -u)":"$(id -g)" --rm -ti -v "$(realpath .):/app" --privileged -v "/dev/bus/usb:/dev/bus/usb" ledger-app-builder-lite:latest
-make clean && make BOLOS_SDK=$<device>_SDK      # replace <device> with one of [NANOS, NANOX, NANOSP]
+make clean && make BOLOS_SDK=$<device>_SDK      # replace <device> with one of [NANOS, NANOX, NANOSP, STAX]
 exit
 ```
 
@@ -57,7 +57,7 @@ Standard useful pytest options
 
 Custom pytest options
 ```
-    --device <device>           run the test on the specified device [nanos,nanox,nanosp,all]. This parameter is mandatory
+    --device <device>           run the test on the specified device [nanos,nanox,nanosp,stax,all]. This parameter is mandatory
     --display                 on Speculos, enables the display of the app screen using QT
     --golden_run              on Speculos, screen comparison functions will save the current screen instead of comparing
     --transport <transport>   run the test above the transport [U2F, HID]. U2F is the default
