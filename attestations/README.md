@@ -51,5 +51,5 @@ They can be accessed from the public repository and should therefore never be us
 You can then retrieve the attestation data and key in a form that should be put in `src/crypto_data.h`.
 To do so, just run `./generateCryptoData.py <env> <version> <model>` and the data should be output in the terminal.
 
-This repository contains a `src/crypto_data.h` file that is committed and contains datas from `test` env and public data from `prod` env.
+This repository contains a `src/crypto_data.h` file that is committed and contains data from `test` env and public data from `prod` env.
 Never use `test` data in production.
