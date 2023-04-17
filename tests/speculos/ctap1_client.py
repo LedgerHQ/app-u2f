@@ -55,16 +55,16 @@ class LedgerCtap1(Ctap1):
             instructions = [NavInsID.USE_CASE_CHOICE_CONFIRM]
         else:
             instructions = [NavInsID.BOTH_CLICK]
-        self.navigator.navigate(instructions)
+        self.navigator.navigate(instructions,
+                                screen_change_after_last_instruction=False)
 
     def wait_for_return_on_dashboard(self):
         if self.model == "stax":
             # On Stax tap on the center to dismiss the status message faster
-            self.navigator._backend.wait_for_screen_change()
-            self.navigator.navigate([NavInsID.USE_CASE_STATUS_DISMISS])
+            self.navigator.navigate([NavInsID.USE_CASE_STATUS_DISMISS],
+                                    screen_change_before_first_instruction=True)
 
-        self.navigator._backend.wait_for_screen_change()
-        # TODO check home screen displayed
+        self.navigator._backend.wait_for_home_screen()
 
     def parse_response(self, response):
         status = struct.unpack(">H", response[-2:])[0]
@@ -143,9 +143,8 @@ class LedgerCtap1(Ctap1):
             self.navigator.navigate_and_compare(root, test_name, instructions,
                                                 screen_change_after_last_instruction=False)
         elif instructions:
-            for instruction in instructions:
-                self.navigator._backend.wait_for_screen_change()
-                self.navigator.navigate([instruction])
+            self.navigator.navigate(instructions,
+                                    screen_change_after_last_instruction=False)
 
         response = self.device.recv(CTAPHID.MSG)
         try:
@@ -225,9 +224,8 @@ class LedgerCtap1(Ctap1):
             self.navigator.navigate_and_compare(root, test_name, instructions,
                                                 screen_change_after_last_instruction=False)
         elif instructions:
-            for instruction in instructions:
-                self.navigator._backend.wait_for_screen_change()
-                self.navigator.navigate([instruction])
+            self.navigator.navigate(instructions,
+                                    screen_change_after_last_instruction=False)
 
         response = self.device.recv(CTAPHID.MSG)
         try:

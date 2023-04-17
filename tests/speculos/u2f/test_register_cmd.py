@@ -240,7 +240,8 @@ def test_register_raw_u2f_fake_channel_security_crc(client):
 
         if client.model == "stax":
             # Patch issue with click ignored on Speculos after a EXCEPTION_IO_RESET
-            client.navigator.navigate([NavIns(NavInsID.TAPPABLE_CENTER_TAP)])
+            client.navigator.navigate([NavIns(NavInsID.TAPPABLE_CENTER_TAP)],
+                                      screen_change_after_last_instruction=False)
 
         # App should then recover and allow new requests
         registration_data = client.ctap1.register(challenge, app_param)
@@ -289,7 +290,8 @@ def test_register_raw_u2f_fake_channel_security_length(client):
 
     if client.model == "stax":
         # Patch issue with click ignored on Speculos after a EXCEPTION_IO_RESET
-        client.navigator.navigate([NavIns(NavInsID.TAPPABLE_CENTER_TAP)])
+        client.navigator.navigate([NavIns(NavInsID.TAPPABLE_CENTER_TAP)],
+                                  screen_change_after_last_instruction=False)
 
     # App should then recover and allow new requests
     registration_data = client.ctap1.register(challenge, app_param)
