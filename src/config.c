@@ -22,8 +22,6 @@
 #include "config.h"
 #include "globals.h"
 
-#define RNG_MODULO 5
-
 config_t const N_u2f_real;
 
 static void derive_and_store_keys(void) {
@@ -33,7 +31,6 @@ static void derive_and_store_keys(void) {
     keyPath[0] = PRIVATE_KEY_PATH;
 
     // privateHmacKey
-    keyPath[0] = PRIVATE_KEY_PATH;
     os_perso_derive_node_bip32(CX_CURVE_SECP256R1, keyPath, 1, key, key + 32);
     if (memcmp(key, (uint8_t *) N_u2f.privateHmacKey, sizeof(N_u2f.privateHmacKey)) == 0) {
         // Keys are already initialized with the proper seed and resetGeneration
