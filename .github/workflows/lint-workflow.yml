@@ -1,0 +1,35 @@
+name: Code style check
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  job_lint_C:
+    name: Lint C code
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v3
+
+      - name: Lint C code
+        run: clang-format --dry-run --Werror include/* src/*
+
+  job_lint_python:
+    name: Lint Python code
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v3
+
+      - name: Install flake8
+        run: |
+          sudo apt update
+          sudo apt install -y flake8
+
+      - name: Lint Python code
+        run: cd tests/speculos && flake8
