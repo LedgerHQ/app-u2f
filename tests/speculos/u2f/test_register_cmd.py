@@ -238,6 +238,10 @@ def test_register_raw_u2f_fake_channel_security_crc(client):
                                       screen_change_after_last_instruction=False)
 
         # App should then recover and allow new requests
+        client.ctap1.wait_for_return_on_dashboard()
+
+        challenge = bytearray(generate_random_bytes(32))
+        app_param = generate_random_bytes(32)
         registration_data = client.ctap1.register(challenge, app_param)
         registration_data.verify(app_param, challenge)
 
@@ -288,6 +292,10 @@ def test_register_raw_u2f_fake_channel_security_length(client):
                                   screen_change_after_last_instruction=False)
 
     # App should then recover and allow new requests
+    client.ctap1.wait_for_return_on_dashboard()
+
+    challenge = generate_random_bytes(32)
+    app_param = generate_random_bytes(32)
     registration_data = client.ctap1.register(challenge, app_param)
     registration_data.verify(app_param, challenge)
 

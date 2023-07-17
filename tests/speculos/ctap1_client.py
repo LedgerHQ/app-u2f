@@ -58,8 +58,8 @@ class LedgerCtap1(Ctap1):
         self.navigator.navigate(instructions,
                                 screen_change_after_last_instruction=False)
 
-    def wait_for_return_on_dashboard(self):
-        if self.model == "stax":
+    def wait_for_return_on_dashboard(self, dismiss=False):
+        if dismiss and self.model == "stax":
             # On Stax tap on the center to dismiss the status message faster
             self.navigator.navigate([NavInsID.USE_CASE_STATUS_DISMISS],
                                     screen_change_before_first_instruction=True)
@@ -161,11 +161,11 @@ class LedgerCtap1(Ctap1):
                 response = self.parse_response(response)
             else:
                 if user_accept is not None:
-                    self.wait_for_return_on_dashboard()
+                    self.wait_for_return_on_dashboard(dismiss=True)
                 raise e
 
         if user_accept is not None:
-            self.wait_for_return_on_dashboard()
+            self.wait_for_return_on_dashboard(dismiss=True)
 
         return RegistrationData(response)
 
@@ -243,10 +243,10 @@ class LedgerCtap1(Ctap1):
                 response = self.parse_response(response)
             else:
                 if user_accept is not None:
-                    self.wait_for_return_on_dashboard()
+                    self.wait_for_return_on_dashboard(dismiss=True)
                 raise e
 
         if user_accept is not None:
-            self.wait_for_return_on_dashboard()
+            self.wait_for_return_on_dashboard(dismiss=True)
 
         return SignatureData(response)
