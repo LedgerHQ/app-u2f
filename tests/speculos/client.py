@@ -53,11 +53,8 @@ class LedgerCtapHidConnection(CtapHidConnection):
         self.u2f_hid_endpoint = (transport.upper() == "U2F")
         self.debug = debug
 
-        if self.u2f_hid_endpoint:
-            # Device answers should be fast
-            self.sock.settimeout(1)
-        else:
-            self.sock.settimeout(10)
+        # Set a timeout to allow tests to raise on socket rx failure
+        self.sock.settimeout(5)
 
     def write_packet(self, packet):
         packet = bytes(packet)

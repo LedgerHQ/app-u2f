@@ -83,7 +83,7 @@ static void ui_menu_about() {
 void ui_idle(void) {
     nbgl_useCaseHome(APPNAME,
                      &C_stax_id_64px,
-                     "Ready to authenticate",
+                     "This app enables using\nyour Ledger device for\nTwo Factor Authentication.",
                      false,
                      ui_menu_about,
                      app_quit);

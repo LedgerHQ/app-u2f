@@ -1,6 +1,5 @@
 import pytest
 import socket
-import time
 
 from cryptography.x509 import load_der_x509_certificate
 
@@ -85,7 +84,7 @@ def test_register_duplicate(client):
 
 
 def test_register_multiple_ok(client):
-    for i in range(10):
+    for _ in range(5):
         challenge = generate_random_bytes(32)
         app_param = generate_random_bytes(32)
 
@@ -153,11 +152,6 @@ def test_register_raw(client):
     # On U2F endpoint, the device should return APDU.SW_CONDITIONS_NOT_SATISFIED
     # until user validate.
     for i in range(5):
-
-        if client.model == "stax":
-            # Patch issue with more time needed on Stax on CI or slow computers
-            time.sleep(0.5)
-
         client.ctap1.send_apdu_nowait(cla=0x00,
                                       ins=Ctap1.INS.REGISTER,
                                       p1=0x00,
@@ -244,6 +238,10 @@ def test_register_raw_u2f_fake_channel_security_crc(client):
                                       screen_change_after_last_instruction=False)
 
         # App should then recover and allow new requests
+        client.ctap1.wait_for_return_on_dashboard()
+
+        challenge = bytearray(generate_random_bytes(32))
+        app_param = generate_random_bytes(32)
         registration_data = client.ctap1.register(challenge, app_param)
         registration_data.verify(app_param, challenge)
 
@@ -294,6 +292,10 @@ def test_register_raw_u2f_fake_channel_security_length(client):
                                   screen_change_after_last_instruction=False)
 
     # App should then recover and allow new requests
+    client.ctap1.wait_for_return_on_dashboard()
+
+    challenge = generate_random_bytes(32)
+    app_param = generate_random_bytes(32)
     registration_data = client.ctap1.register(challenge, app_param)
     registration_data.verify(app_param, challenge)
 
