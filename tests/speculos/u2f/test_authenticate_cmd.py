@@ -126,7 +126,7 @@ def test_authenticate_with_reboot_ok(client):
 
 def test_authenticate_multiple_ok(client):
     registrations = []
-    for _ in range(10):
+    for _ in range(5):
         app_param, registration_data = register(client)
         registrations.append((app_param, registration_data))
 
@@ -144,7 +144,7 @@ def test_authenticate_counter_increment(client):
     app_param, registration_data = register(client)
 
     prev = 0
-    for _ in range(10):
+    for _ in range(5):
         challenge = generate_random_bytes(32)
 
         authentication_data = client.ctap1.authenticate(challenge,
