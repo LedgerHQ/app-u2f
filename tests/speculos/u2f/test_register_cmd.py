@@ -1,6 +1,5 @@
 import pytest
 import socket
-import time
 
 from cryptography.x509 import load_der_x509_certificate
 
@@ -153,11 +152,6 @@ def test_register_raw(client):
     # On U2F endpoint, the device should return APDU.SW_CONDITIONS_NOT_SATISFIED
     # until user validate.
     for i in range(5):
-
-        if client.model == "stax":
-            # Patch issue with more time needed on Stax on CI or slow computers
-            time.sleep(0.5)
-
         client.ctap1.send_apdu_nowait(cla=0x00,
                                       ins=Ctap1.INS.REGISTER,
                                       p1=0x00,
