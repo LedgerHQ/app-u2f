@@ -133,6 +133,9 @@ APP_LOAD_PARAMS += --nocrc
 # This is against U2F standard and should be used only for development purposes.
 #DEFINES += HAVE_NO_USER_PRESENCE_CHECK
 
+# Mandatory for IO revamp
+DISABLE_OS_IO_STACK_USE = 1
+
 ##############
 # Compiler #
 ##############
