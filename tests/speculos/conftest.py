@@ -50,7 +50,7 @@ def prepare_speculos_args(root_pytest_dir: Path, firmware: Firmware, display: bo
     if display:
         speculos_args += ["--display", "qt"]
 
-    device = firmware.device
+    device = firmware.name
     if device == "nanosp":
         device = "nanos2"
 
