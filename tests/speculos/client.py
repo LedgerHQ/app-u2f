@@ -49,7 +49,7 @@ class LedgerCtapHidConnection(CtapHidConnection):
     to speculos raw socket.
     """
     def __init__(self, transport, debug=False):
-        self.sock = socket.create_connection(('127.0.0.1', 9999))
+        self.sock = socket.create_connection(('127.0.0.1', 5001))
         self.u2f_hid_endpoint = (transport.upper() == "U2F")
         self.debug = debug
 
