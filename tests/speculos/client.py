@@ -49,15 +49,12 @@ class LedgerCtapHidConnection(CtapHidConnection):
     to speculos raw socket.
     """
     def __init__(self, transport, debug=False):
-        self.sock = socket.create_connection(('127.0.0.1', 9999))
+        self.sock = socket.create_connection(('127.0.0.1', 5001))
         self.u2f_hid_endpoint = (transport.upper() == "U2F")
         self.debug = debug
 
-        if self.u2f_hid_endpoint:
-            # Device answers should be fast
-            self.sock.settimeout(1)
-        else:
-            self.sock.settimeout(10)
+        # Set a timeout to allow tests to raise on socket rx failure
+        self.sock.settimeout(5)
 
     def write_packet(self, packet):
         packet = bytes(packet)
