@@ -20,6 +20,7 @@
 #define __U2F_PROCESS_H__
 
 typedef struct u2f_data_t {
+    uint8_t user_presence_request_type;
     uint8_t challenge_param[32];
     uint8_t application_param[32];
     uint8_t nonce[CREDENTIAL_NONCE_SIZE];
