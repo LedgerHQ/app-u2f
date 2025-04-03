@@ -49,10 +49,10 @@ jobs:
 
     steps:
       - name: Clone
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download app binaries
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: compiled_app_binaries
           path: build/
@@ -62,7 +62,7 @@ jobs:
 
       - name: Install tests dependencies
         run: |
-          pip install --extra-index-url https://test.pypi.org/simple/ -r tests/speculos/requirements.txt
+          pip install -r tests/speculos/requirements.txt
 
       - name: Run test
         env:
