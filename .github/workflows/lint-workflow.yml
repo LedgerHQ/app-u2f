@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Clone
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Lint C code
         run: clang-format --dry-run --Werror include/* src/*
@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Clone
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install flake8
         run: |
