@@ -8,12 +8,12 @@ from client import TESTS_SPECULOS_DIR
 from utils import generate_random_bytes, fido_known_appid
 
 
-def test_u2f_screens_idle(client, test_name, firmware):
+def test_u2f_screens_idle(client, test_name, device):
     # Refresh navigator screen content reference
     time.sleep(0.1)
     client.navigator._backend.get_current_screen_content()
 
-    if firmware.device.startswith("nano"):
+    if device.is_nano:
         instructions = []
         # Screen 0 -> 1
         instructions.append(NavIns(NavInsID.RIGHT_CLICK))

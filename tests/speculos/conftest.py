@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from ragger.firmware import Firmware
+from ledgered.devices import Device
 from ragger.backend import SpeculosBackend
 from ragger.utils import find_project_root_dir
 
@@ -44,13 +44,13 @@ def transport(pytestconfig):
     return pytestconfig.getoption("transport")
 
 
-def prepare_speculos_args(root_pytest_dir: Path, firmware: Firmware, display: bool, transport: str):
+def prepare_speculos_args(root_pytest_dir: Path, device: Device, display: bool, transport: str):
     speculos_args = ["--usb", transport]
 
     if display:
         speculos_args += ["--display", "qt"]
 
-    device = firmware.name
+    device = device.name
     if device == "nanosp":
         device = "nanos2"
 
@@ -68,25 +68,25 @@ def prepare_speculos_args(root_pytest_dir: Path, firmware: Firmware, display: bo
 # instantiated, and the tests will either run on Speculos or on a physical
 # device depending on the backend
 def create_backend(root_pytest_dir: Path, backend_name: str,
-                   firmware: Firmware, display: bool, transport: str):
+                   device: Device, display: bool, transport: str):
     if backend_name.lower() == "speculos":
-        app_path, speculos_args = prepare_speculos_args(root_pytest_dir, firmware,
+        app_path, speculos_args = prepare_speculos_args(root_pytest_dir, device,
                                                         display, transport)
         return SpeculosBackend(app_path,
-                               firmware=firmware,
+                               device=device,
                                **speculos_args)
     else:
         raise ValueError(f"Backend '{backend_name}' is unknown. Valid backends are: {BACKENDS}")
 
 
 @pytest.fixture(scope="session")
-def backend(root_pytest_dir, backend_name, firmware, display, transport):
-    with create_backend(root_pytest_dir, backend_name, firmware, display, transport) as b:
+def backend(root_pytest_dir, backend_name, device, display, transport):
+    with create_backend(root_pytest_dir, backend_name, device, display, transport) as b:
         yield b
 
 
 @pytest.fixture
-def client(firmware, backend, navigator, transport: str):
-    client = TestClient(firmware, backend, navigator, transport)
+def client(device, backend, navigator, transport: str):
+    client = TestClient(device, backend, navigator, transport)
     client.start()
     return client

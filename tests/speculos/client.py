@@ -198,9 +198,8 @@ class LedgerCtapHidDevice(CtapHidDevice):
 
 
 class TestClient:
-    def __init__(self, firmware, ragger_backend, navigator, transport, debug=False):
-        self.firmware = firmware
-        self.model = firmware.device
+    def __init__(self, device, ragger_backend, navigator, transport, debug=False):
+        self.model = device.name
         self.ragger_backend = ragger_backend
         self.navigator = navigator
         self.debug = debug
