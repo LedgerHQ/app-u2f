@@ -3,9 +3,10 @@ import pytest
 from fido2.ctap1 import Ctap1, ApduError
 
 from ctap1_client import APDU
+from client import TestClient
 
 
-def test_get_version_raw(client):
+def test_get_version_raw(client: TestClient):
     version = client.ctap1.send_apdu(cla=0x00,
                                      ins=Ctap1.INS.VERSION,
                                      p1=0x00,
@@ -15,13 +16,13 @@ def test_get_version_raw(client):
     assert version == "U2F_V2"
 
 
-def test_get_version(client):
+def test_get_version(client: TestClient):
     version = client.ctap1.get_version()
 
     assert version == "U2F_V2"
 
 
-def test_get_version_bad_length(client):
+def test_get_version_bad_length(client: TestClient):
     with pytest.raises(ApduError) as e:
         client.ctap1.send_apdu(cla=0x00,
                                ins=Ctap1.INS.VERSION,
@@ -31,7 +32,7 @@ def test_get_version_bad_length(client):
     assert e.value.code == APDU.SW_WRONG_LENGTH
 
 
-def test_get_version_wrong_p1p2(client):
+def test_get_version_wrong_p1p2(client: TestClient):
     # Only supported P1 is 0x00
     for p1 in range(1, 0xff + 1):
         with pytest.raises(ApduError) as e:

@@ -2,10 +2,13 @@ import struct
 
 from enum import IntEnum
 
-from ragger.navigator import NavInsID
+from ledgered.devices import Device, DeviceType
+
+from ragger.navigator import Navigator, NavInsID
 
 from fido2.ctap1 import Ctap1, ApduError, RegistrationData, SignatureData
 from fido2.hid import CTAPHID
+from fido2.ctap import CtapDevice
 
 from utils import prepare_apdu
 
@@ -44,29 +47,30 @@ class LedgerCtap1(Ctap1):
     Then, register() and authenticate() Ctap1 functions are overridden
     to add interactions with the screen and the buttons.
     """
-    def __init__(self, device, model, navigator, debug=False):
-        super().__init__(device)
-        self.model = model
+    def __init__(self, ctap_device: CtapDevice, device: Device, navigator: Navigator,
+                 debug: bool = False):
+        super().__init__(ctap_device)
+        self.ledger_device = device
         self.navigator = navigator
         self.debug = debug
 
     def confirm(self):
-        if self.model == "stax":
+        if self.ledger_device.type == DeviceType.STAX:
             instructions = [NavInsID.USE_CASE_CHOICE_CONFIRM]
         else:
             instructions = [NavInsID.BOTH_CLICK]
         self.navigator.navigate(instructions,
                                 screen_change_after_last_instruction=False)
 
-    def wait_for_return_on_dashboard(self, dismiss=False):
-        if dismiss and self.model == "stax":
+    def wait_for_return_on_dashboard(self, dismiss: bool = False):
+        if dismiss and self.ledger_device.type == DeviceType.STAX:
             # On Stax tap on the center to dismiss the status message faster
             self.navigator.navigate([NavInsID.USE_CASE_STATUS_DISMISS],
                                     screen_change_before_first_instruction=True)
 
         self.navigator._backend.wait_for_home_screen()
 
-    def parse_response(self, response):
+    def parse_response(self, response: bytes):
         status = struct.unpack(">H", response[-2:])[0]
         try:
             status = APDU(status)
@@ -90,7 +94,7 @@ class LedgerCtap1(Ctap1):
         apdu = prepare_apdu(cla=cla, ins=ins, p1=p1, p2=p2, data=data)
         self.device.send(CTAPHID.MSG, apdu)
 
-    def register(self, client_param, app_param, user_accept=True,
+    def register(self, client_param: bytes, app_param: bytes, user_accept: bool = True,
                  check_screens=None, compare_args=None):
         # Refresh navigator screen content reference
         self.navigator._backend.get_current_screen_content()
@@ -100,7 +104,7 @@ class LedgerCtap1(Ctap1):
 
         instructions = []
 
-        if self.model == "stax":
+        if self.ledger_device.type == DeviceType.STAX:
             if user_accept:
                 instructions.append(NavInsID.USE_CASE_CHOICE_CONFIRM)
             elif user_accept is not None:
@@ -116,7 +120,7 @@ class LedgerCtap1(Ctap1):
             instructions.append(NavInsID.RIGHT_CLICK)
 
             # Screen 1 -> 2
-            if self.model == "nanos":
+            if self.ledger_device.type == DeviceType.NANOS:
                 instructions += [NavInsID.RIGHT_CLICK] * 4
             else:
                 instructions += [NavInsID.RIGHT_CLICK] * 2
@@ -169,8 +173,8 @@ class LedgerCtap1(Ctap1):
 
         return RegistrationData(response)
 
-    def authenticate(self, client_param, app_param, key_handle,
-                     check_only=False, user_accept=True,
+    def authenticate(self, client_param: bytes, app_param: bytes, key_handle: bytes,
+                     check_only: bool = False, user_accept: bool = True,
                      check_screens=None, compare_args=None):
         # Refresh navigator screen content reference
         self.navigator._backend.get_current_screen_content()
@@ -181,7 +185,7 @@ class LedgerCtap1(Ctap1):
         self.send_apdu_nowait(ins=Ctap1.INS.AUTHENTICATE, p1=p1, data=data)
 
         instructions = []
-        if self.model == "stax":
+        if self.ledger_device.type == DeviceType.STAX:
             if user_accept:
                 instructions.append(NavInsID.USE_CASE_CHOICE_CONFIRM)
             elif user_accept is not None:
@@ -197,7 +201,7 @@ class LedgerCtap1(Ctap1):
             instructions.append(NavInsID.RIGHT_CLICK)
 
             # Screen 1 -> 2
-            if self.model == "nanos":
+            if self.ledger_device.type == DeviceType.NANOS:
                 instructions += [NavInsID.RIGHT_CLICK] * 4
             else:
                 instructions += [NavInsID.RIGHT_CLICK] * 2
