@@ -1,16 +1,17 @@
 import cryptography
 import pytest
 import struct
+from typing import Optional
 
 from fido2.ctap1 import Ctap1, ApduError, SignatureData
 from fido2.hid import CTAPHID
 
-from client import TESTS_SPECULOS_DIR
+from client import TESTS_SPECULOS_DIR, TestClient
 from ctap1_client import APDU, U2F_P1
 from utils import FIDO_RP_ID_HASH_1, generate_random_bytes
 
 
-def register(client, _app_param=None):
+def register(client: TestClient, _app_param: Optional[bytes] = None):
     challenge = generate_random_bytes(32)
     if _app_param:
         app_param = _app_param
@@ -22,7 +23,7 @@ def register(client, _app_param=None):
     return app_param, registration_data
 
 
-def test_authenticate_check_only_ok(client):
+def test_authenticate_check_only_ok(client: TestClient):
     app_param, registration_data = register(client)
     challenge = generate_random_bytes(32)
 
@@ -42,7 +43,7 @@ def test_authenticate_check_only_ok(client):
     assert e.value.code == APDU.SW_CONDITIONS_NOT_SATISFIED
 
 
-def test_authenticate_check_only_wrong_key_handle(client):
+def test_authenticate_check_only_wrong_key_handle(client: TestClient):
     app_param, registration_data = register(client)
     challenge = generate_random_bytes(32)
     key_handle = bytearray(registration_data.key_handle)
@@ -60,7 +61,7 @@ def test_authenticate_check_only_wrong_key_handle(client):
     assert e.value.code == APDU.SW_WRONG_DATA
 
 
-def test_authenticate_check_only_wrong_app_param(client):
+def test_authenticate_check_only_wrong_app_param(client: TestClient):
     app_param, registration_data = register(client)
     challenge = generate_random_bytes(32)
     key_handle = bytearray(registration_data.key_handle)
@@ -79,7 +80,7 @@ def test_authenticate_check_only_wrong_app_param(client):
     assert e.value.code == APDU.SW_WRONG_DATA
 
 
-def test_authenticate_ok(client, test_name):
+def test_authenticate_ok(client: TestClient, test_name: str):
     app_param, registration_data = register(client, FIDO_RP_ID_HASH_1)
     challenge = generate_random_bytes(32)
 
@@ -94,7 +95,7 @@ def test_authenticate_ok(client, test_name):
     authentication_data.verify(app_param, challenge, registration_data.public_key)
 
 
-def test_authenticate_user_refused(client, test_name):
+def test_authenticate_user_refused(client: TestClient, test_name: str):
     app_param, registration_data = register(client, FIDO_RP_ID_HASH_1)
     challenge = generate_random_bytes(32)
 
@@ -111,7 +112,7 @@ def test_authenticate_user_refused(client, test_name):
     assert e.value.code == APDU.SW_PROPRIETARY_INTERNAL
 
 
-def test_authenticate_with_reboot_ok(client):
+def test_authenticate_with_reboot_ok(client: TestClient):
     app_param, registration_data = register(client)
     challenge = generate_random_bytes(32)
 
@@ -124,7 +125,7 @@ def test_authenticate_with_reboot_ok(client):
     authentication_data.verify(app_param, challenge, registration_data.public_key)
 
 
-def test_authenticate_multiple_ok(client):
+def test_authenticate_multiple_ok(client: TestClient):
     registrations = []
     for _ in range(5):
         app_param, registration_data = register(client)
@@ -140,7 +141,7 @@ def test_authenticate_multiple_ok(client):
         authentication_data.verify(app_param, challenge, registration_data.public_key)
 
 
-def test_authenticate_counter_increment(client):
+def test_authenticate_counter_increment(client: TestClient):
     app_param, registration_data = register(client)
 
     prev = 0
@@ -161,7 +162,7 @@ def test_authenticate_counter_increment(client):
         # doesn't keep NVM data.
 
 
-def test_authenticate_no_registration(client):
+def test_authenticate_no_registration(client: TestClient):
     challenge = generate_random_bytes(32)
 
     # Use random app_param and public key
@@ -177,7 +178,7 @@ def test_authenticate_no_registration(client):
     assert e.value.code == APDU.SW_WRONG_DATA
 
 
-def test_authenticate_wrong_challenge(client):
+def test_authenticate_wrong_challenge(client: TestClient):
     app_param, registration_data = register(client)
     challenge = bytearray(generate_random_bytes(32))
 
@@ -192,7 +193,7 @@ def test_authenticate_wrong_challenge(client):
         authentication_data.verify(app_param, challenge, registration_data.public_key)
 
 
-def test_authenticate_wrong_app_param(client):
+def test_authenticate_wrong_app_param(client: TestClient):
     app_param, registration_data = register(client)
     challenge = generate_random_bytes(32)
 
@@ -209,7 +210,7 @@ def test_authenticate_wrong_app_param(client):
     assert e.value.code == APDU.SW_WRONG_DATA
 
 
-def test_authenticate_wrong_key_handle(client):
+def test_authenticate_wrong_key_handle(client: TestClient):
     app_param, registration_data = register(client)
     challenge = generate_random_bytes(32)
     key_handle = bytearray(registration_data.key_handle)
@@ -226,7 +227,7 @@ def test_authenticate_wrong_key_handle(client):
     assert e.value.code == APDU.SW_WRONG_DATA
 
 
-def test_authenticate_length_too_short(client):
+def test_authenticate_length_too_short(client: TestClient):
     app_param, registration_data = register(client)
     challenge = generate_random_bytes(32)
 
@@ -242,7 +243,7 @@ def test_authenticate_length_too_short(client):
     assert e.value.code == APDU.SW_WRONG_DATA
 
 
-def test_authenticate_length_too_long(client):
+def test_authenticate_length_too_long(client: TestClient):
     app_param, registration_data = register(client)
     challenge = generate_random_bytes(32)
 
@@ -258,7 +259,7 @@ def test_authenticate_length_too_long(client):
     assert e.value.code == APDU.SW_WRONG_DATA
 
 
-def test_authenticate_wrong_p1p2(client):
+def test_authenticate_wrong_p1p2(client: TestClient):
     app_param, registration_data = register(client)
     challenge = generate_random_bytes(32)
     key_handle = registration_data.key_handle
@@ -294,7 +295,7 @@ def test_authenticate_wrong_p1p2(client):
         assert e.value.code == APDU.SW_INCORRECT_P1P2
 
 
-def test_authenticate_raw(client):
+def test_authenticate_raw(client: TestClient):
     if client.use_raw_HID_endpoint:
         pytest.skip("Does not work with this transport")
 

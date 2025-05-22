@@ -1,7 +1,9 @@
 from utils import generate_random_bytes
 
+from client import TestClient
 
-def test_authenticate_ok(client):
+
+def test_authenticate_ok(client: TestClient):
     # Make sure that app update will still works with previously generated
     # key handles and public key already shared with some Relying Party
     app_param_hex = "f430952043cccefab769aa034f8f38d6"
