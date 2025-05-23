@@ -34,7 +34,7 @@ APP_LOAD_PARAMS += $(COMMON_LOAD_PARAMS)
 
 APPVERSION_M=1
 APPVERSION_N=3
-APPVERSION_P=2
+APPVERSION_P=3
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
 ifeq ($(TARGET_NAME),TARGET_NANOS)
@@ -132,6 +132,9 @@ APP_LOAD_PARAMS += --nocrc
 # Used to disable user presence check.
 # This is against U2F standard and should be used only for development purposes.
 #DEFINES += HAVE_NO_USER_PRESENCE_CHECK
+
+# Mandatory for IO revamp
+DISABLE_OS_IO_STACK_USE = 1
 
 ##############
 # Compiler #
