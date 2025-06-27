@@ -400,7 +400,7 @@ exit:
 }
 
 static int u2f_process_user_presence_confirmed(void) {
-    switch (G_io_apdu_buffer[OFFSET_INS]) {
+    switch (globals_get_u2f_data()->user_presence_request_type) {
         case FIDO_INS_ENROLL:
             return u2f_prepare_enroll_response();
 
@@ -436,6 +436,7 @@ static unsigned int u2f_callback_confirm(const bagl_element_t *element) {
     UNUSED(element);
 
     uint16_t tx = u2f_process_user_presence_confirmed();
+    PRINTF("u2f_callback_confirm %d\n", tx);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
     ui_idle();
     return 0;  // DO NOT REDISPLAY THE BUTTON
@@ -659,6 +660,7 @@ static void u2f_handle_apdu_enroll(unsigned char *flags, unsigned short *tx, uin
             sizeof(reg_req->application_param));
 
 #ifndef HAVE_NO_USER_PRESENCE_CHECK
+    globals_get_u2f_data()->user_presence_request_type = G_io_apdu_buffer[OFFSET_INS];
     if (G_io_u2f.media == U2F_MEDIA_USB) {
         u2f_message_set_autoreply_wait_user_presence(&G_io_u2f, true);
     }
@@ -726,6 +728,7 @@ static void u2f_handle_apdu_sign(unsigned char *flags, unsigned short *tx, uint3
             sizeof(auth_req_base->application_param));
 
 #ifndef HAVE_NO_USER_PRESENCE_CHECK
+    globals_get_u2f_data()->user_presence_request_type = G_io_apdu_buffer[OFFSET_INS];
     if (G_io_u2f.media == U2F_MEDIA_USB) {
         u2f_message_set_autoreply_wait_user_presence(&G_io_u2f, true);
     }

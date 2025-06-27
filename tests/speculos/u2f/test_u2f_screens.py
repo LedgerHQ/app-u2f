@@ -4,16 +4,16 @@ import time
 
 from ragger.navigator import NavInsID, NavIns
 
-from client import TESTS_SPECULOS_DIR
+from client import TESTS_SPECULOS_DIR, TestClient
 from utils import generate_random_bytes, fido_known_appid
 
 
-def test_u2f_screens_idle(client, test_name, firmware):
+def test_u2f_screens_idle(client: TestClient, test_name: str):
     # Refresh navigator screen content reference
     time.sleep(0.1)
-    client.navigator._backend.get_current_screen_content()
+    client.backend.get_current_screen_content()
 
-    if firmware.device.startswith("nano"):
+    if client.device.is_nano:
         instructions = []
         # Screen 0 -> 1
         instructions.append(NavIns(NavInsID.RIGHT_CLICK))
@@ -29,11 +29,8 @@ def test_u2f_screens_idle(client, test_name, firmware):
                                           screen_change_before_first_instruction=False)
 
 
-@pytest.mark.skipif(
-    "--fast" in sys.argv,
-    reason="running in fast mode",
-)
-def test_u2f_screens_fido_known_list(client, test_name):
+@pytest.mark.skipif("--fast" in sys.argv, reason="running in fast mode")
+def test_u2f_screens_fido_known_list(client: TestClient, test_name: str):
     # test on all fido_known_appid
     for idx, app_param in enumerate(fido_known_appid.keys()):
         # Test registration
@@ -58,5 +55,4 @@ def test_u2f_screens_fido_known_list(client, test_name):
                                                         check_screens="fast",
                                                         compare_args=compare_args)
 
-        authentication_data.verify(app_param, challenge,
-                                   registration_data.public_key)
+        authentication_data.verify(app_param, challenge, registration_data.public_key)

@@ -7,6 +7,9 @@ from cryptography.hazmat.primitives import serialization
 
 from pathlib import Path
 
+from ragger.backend import SpeculosBackend
+from ragger.navigator import Navigator
+
 from fido2.attestation import AttestationVerifier
 from fido2.ctap import CtapError
 from fido2.hid import CtapHidDevice, TYPE_INIT, CAPABILITY, CTAPHID
@@ -24,7 +27,7 @@ PROD_CA_PATH = CA_PATH / "prod" / "ca-cert.pem"
 
 
 class LedgerAttestationVerifier(AttestationVerifier):
-    def __init__(self, device_model):
+    def __init__(self):
         super().__init__()
 
         use_prod_ca = os.environ.get("USE_PROD_CA", False)
@@ -198,10 +201,10 @@ class LedgerCtapHidDevice(CtapHidDevice):
 
 
 class TestClient:
-    def __init__(self, firmware, ragger_backend, navigator, transport, debug=False):
-        self.firmware = firmware
-        self.model = firmware.device
-        self.ragger_backend = ragger_backend
+    def __init__(self, backend: SpeculosBackend, navigator: Navigator, transport,
+                 debug: bool = False):
+        self.device = backend.device
+        self.backend = backend
         self.navigator = navigator
         self.debug = debug
 
@@ -214,13 +217,12 @@ class TestClient:
 
     def start(self):
         try:
-            hid_dev = LedgerCtapHidConnection(self.USB_transport,
-                                              self.debug)
+            hid_dev = LedgerCtapHidConnection(self.USB_transport, self.debug)
             descriptor = HidDescriptor("sim", 0, 0, 64, 64, "speculos", "0000")
             self.dev = LedgerCtapHidDevice(descriptor, hid_dev,
                                            self.USB_transport, self.debug)
 
-            self.ctap1 = LedgerCtap1(self.dev, self.model, self.navigator,
+            self.ctap1 = LedgerCtap1(self.dev, self.device, self.navigator,
                                      self.debug)
 
         except Exception as e:
@@ -229,6 +231,6 @@ class TestClient:
     def simulate_reboot(self):
         # Warning, data saved in NVM won't be restored.
         # So this is not a perfect reboot simulation.
-        self.ragger_backend._client.stop()
-        self.ragger_backend._client.start()
+        self.backend._client.stop()
+        self.backend._client.start()
         self.start()

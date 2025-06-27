@@ -4,10 +4,11 @@ import struct
 from fido2.ctap1 import Ctap1, ApduError
 
 from ctap1_client import APDU
+from client import TestClient
 from utils import generate_random_bytes
 
 
-def test_cmd_wrong_cla(client):
+def test_cmd_wrong_cla(client: TestClient):
     # Only supported CLA is 0x00
     for cla in range(1, 0xff + 1):
         with pytest.raises(ApduError) as e:
@@ -19,7 +20,7 @@ def test_cmd_wrong_cla(client):
         assert e.value.code == APDU.SW_CLA_NOT_SUPPORTED
 
 
-def test_cmd_wrong_ins(client):
+def test_cmd_wrong_ins(client: TestClient):
     for ins in range(0xff + 1):
         # Only supported INS are [0x01, 0x02, 0x03, 0x10]
         if ins in [0x01, 0x02, 0x03, 0x10]:
@@ -35,7 +36,7 @@ def test_cmd_wrong_ins(client):
         assert e.value.code == APDU.SW_INS_NOT_SUPPORTED
 
 
-def test_cmd_length(client):
+def test_cmd_length(client: TestClient):
     challenge = generate_random_bytes(32)
     app_param = generate_random_bytes(32)
 
@@ -71,7 +72,7 @@ def test_cmd_length(client):
         assert e.value.code == APDU.SW_WRONG_LENGTH
 
 
-def test_cmd_no_data_encoding(client):
+def test_cmd_no_data_encoding(client: TestClient):
     cla = 0x00
     ins = Ctap1.INS.VERSION
     p1 = 0x00

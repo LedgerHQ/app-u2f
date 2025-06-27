@@ -3,6 +3,8 @@ import socket
 
 from cryptography.x509 import load_der_x509_certificate
 
+from ledgered.devices import DeviceType
+
 from ragger.navigator import NavInsID, NavIns
 
 import fido2
@@ -11,12 +13,12 @@ from fido2.ctap1 import ApduError, Ctap1, RegistrationData
 from fido2.hid import CTAPHID
 from fido2.webauthn import AttestationObject
 
-from client import TESTS_SPECULOS_DIR, LedgerAttestationVerifier
+from client import TESTS_SPECULOS_DIR, TestClient, LedgerAttestationVerifier
 from ctap1_client import APDU, U2F_P1
 from utils import FIDO_RP_ID_HASH_1, generate_random_bytes
 
 
-def test_register_ok(client, test_name):
+def test_register_ok(client: TestClient, test_name: str):
     challenge = generate_random_bytes(32)
     app_param = FIDO_RP_ID_HASH_1
 
@@ -28,14 +30,14 @@ def test_register_ok(client, test_name):
     registration_data.verify(app_param, challenge)
 
 
-def test_register_certificate(client):
+def test_register_certificate(client: TestClient):
     challenge = generate_random_bytes(32)
     app_param = generate_random_bytes(32)
 
     registration_data = client.ctap1.register(challenge, app_param)
     registration_data.verify(app_param, challenge)
 
-    verifier = LedgerAttestationVerifier(client.model)
+    verifier = LedgerAttestationVerifier()
     attestation = AttestationObject.from_ctap1(app_param, registration_data)
     verifier.verify_attestation(attestation, challenge)
 
@@ -51,7 +53,7 @@ def test_register_certificate(client):
     assert cert.extensions[0].value.value == bytes.fromhex("03020520")
 
 
-def test_register_user_refused(client, test_name):
+def test_register_user_refused(client: TestClient, test_name: str):
     challenge = generate_random_bytes(32)
     app_param = FIDO_RP_ID_HASH_1
 
@@ -65,7 +67,7 @@ def test_register_user_refused(client, test_name):
     assert e.value.code == APDU.SW_PROPRIETARY_INTERNAL
 
 
-def test_register_duplicate(client):
+def test_register_duplicate(client: TestClient):
     challenge = generate_random_bytes(32)
     app_param = generate_random_bytes(32)
 
@@ -83,7 +85,7 @@ def test_register_duplicate(client):
     registration_data.verify(app_param, challenge)
 
 
-def test_register_multiple_ok(client):
+def test_register_multiple_ok(client: TestClient):
     for _ in range(5):
         challenge = generate_random_bytes(32)
         app_param = generate_random_bytes(32)
@@ -92,7 +94,7 @@ def test_register_multiple_ok(client):
         registration_data.verify(app_param, challenge)
 
 
-def test_register_wrong_app_param(client):
+def test_register_wrong_app_param(client: TestClient):
     challenge = generate_random_bytes(32)
     app_param = generate_random_bytes(32)
 
@@ -106,7 +108,7 @@ def test_register_wrong_app_param(client):
         registration_data.verify(app_param, challenge)
 
 
-def test_register_wrong_challenge(client):
+def test_register_wrong_challenge(client: TestClient):
     challenge = bytearray(generate_random_bytes(32))
     app_param = generate_random_bytes(32)
 
@@ -119,7 +121,7 @@ def test_register_wrong_challenge(client):
         registration_data.verify(app_param, challenge)
 
 
-def test_register_length_too_short(client):
+def test_register_length_too_short(client: TestClient):
     challenge = generate_random_bytes(32)
 
     # Create app_param one byte too short
@@ -130,7 +132,7 @@ def test_register_length_too_short(client):
     assert e.value.code == APDU.SW_WRONG_LENGTH
 
 
-def test_register_length_too_long(client):
+def test_register_length_too_long(client: TestClient):
     challenge = generate_random_bytes(32)
 
     # Create app_param one byte too long
@@ -141,7 +143,7 @@ def test_register_length_too_long(client):
     assert e.value.code == APDU.SW_WRONG_LENGTH
 
 
-def test_register_raw(client):
+def test_register_raw(client: TestClient):
     if client.use_raw_HID_endpoint:
         pytest.skip("Does not work with this transport")
 
@@ -183,7 +185,7 @@ def test_register_raw(client):
     registration_data.verify(app_param, challenge)
 
 
-def test_register_raw_u2f_fake_channel_security_crc(client):
+def test_register_raw_u2f_fake_channel_security_crc(client: TestClient):
     if client.use_raw_HID_endpoint:
         pytest.skip("Does not work with this transport")
 
@@ -232,7 +234,7 @@ def test_register_raw_u2f_fake_channel_security_crc(client):
         with pytest.raises(socket.timeout) as e:
             response = client.ctap1.device.recv(CTAPHID.MSG)
 
-        if client.model == "stax":
+        if client.device.type == DeviceType.STAX:
             # Patch issue with click ignored on Speculos after a EXCEPTION_IO_RESET
             client.navigator.navigate([NavIns(NavInsID.TAPPABLE_CENTER_TAP)],
                                       screen_change_after_last_instruction=False)
@@ -246,7 +248,7 @@ def test_register_raw_u2f_fake_channel_security_crc(client):
         registration_data.verify(app_param, challenge)
 
 
-def test_register_raw_u2f_fake_channel_security_length(client):
+def test_register_raw_u2f_fake_channel_security_length(client: TestClient):
     challenge = generate_random_bytes(32)
     app_param = generate_random_bytes(32)
     data = challenge + app_param
@@ -286,7 +288,7 @@ def test_register_raw_u2f_fake_channel_security_length(client):
     with pytest.raises(socket.timeout) as e:
         response = client.ctap1.device.recv(CTAPHID.MSG)
 
-    if client.model == "stax":
+    if client.device.type == DeviceType.STAX:
         # Patch issue with click ignored on Speculos after a EXCEPTION_IO_RESET
         client.navigator.navigate([NavIns(NavInsID.TAPPABLE_CENTER_TAP)],
                                   screen_change_after_last_instruction=False)
@@ -300,7 +302,7 @@ def test_register_raw_u2f_fake_channel_security_length(client):
     registration_data.verify(app_param, challenge)
 
 
-def test_register_wrong_p1p2(client):
+def test_register_wrong_p1p2(client: TestClient):
     challenge = generate_random_bytes(32)
     app_param = generate_random_bytes(32)
     data = challenge + app_param
