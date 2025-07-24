@@ -22,6 +22,10 @@
 #include "ui_shared.h"
 
 static void app_quit(void) {
+#ifdef REVAMPED_IO
+    // handle properly the USB stop/start
+    os_io_stop();
+#endif /* #ifdef REVAMPED_IO */
     // exit app here
     os_sched_exit(-1);
 }
