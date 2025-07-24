@@ -106,6 +106,10 @@ unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
 void app_exit(void) {
     BEGIN_TRY_L(exit) {
         TRY_L(exit) {
+#ifdef REVAMPED_IO
+            // handle properly the USB stop/start
+            os_io_stop();
+#endif /* #ifdef REVAMPED_IO */
             os_sched_exit(-1);
         }
         FINALLY_L(exit) {
