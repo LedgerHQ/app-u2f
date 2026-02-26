@@ -29,19 +29,21 @@ jobs:
     strategy:
       matrix:
         include:
-          - model: nanos
-
           - model: nanox
             args: "--fast"
+            reqs: "tests/speculos/requirements.txt"
 
           - model: nanosp
             args: "--fast"
+            reqs: "tests/speculos/requirements.txt"
 
           - model: nanos
             args: "--transport HID --fast"
+            reqs: "tests/speculos/requirements_nanos.txt"
 
           - model: stax
             args: "--fast"
+            reqs: "tests/speculos/requirements.txt"
 
     needs: build_application
 
@@ -62,7 +64,7 @@ jobs:
 
       - name: Install tests dependencies
         run: |
-          pip install -r tests/speculos/requirements.txt
+          pip install -r ${{ matrix.reqs }}
 
       - name: Run test
         env:
