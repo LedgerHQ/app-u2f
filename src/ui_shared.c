@@ -19,6 +19,7 @@
 #include "ux.h"
 
 #include "glyphs.h"
+#include "os.h"
 #include "ui_shared.h"
 
 static void app_quit(void) {
