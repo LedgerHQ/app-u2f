@@ -19,6 +19,11 @@
 #ifndef __CRYPTO_H__
 #define __CRYPTO_H__
 
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "cx.h"
+
 /**
  * Compare two buffer a and b.
  * Return true if they match, else false.

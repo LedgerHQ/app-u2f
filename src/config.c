@@ -16,11 +16,11 @@
 *   limitations under the License.
 ********************************************************************************/
 
-#include "os.h"
-#include "cx.h"
-
 #include "config.h"
+
+#include "cx.h"
 #include "globals.h"
+#include "os.h"
 
 config_t const N_u2f_real;
 
@@ -32,11 +32,13 @@ static void derive_and_store_keys(void) {
 
     // privateHmacKey
     os_perso_derive_node_bip32(CX_CURVE_SECP256R1, keyPath, 1, key, key + 32);
-    if (memcmp(key, (uint8_t *) N_u2f.privateHmacKey, sizeof(N_u2f.privateHmacKey)) == 0) {
+    if (memcmp(key, (uint8_t*)N_u2f.privateHmacKey,
+               sizeof(N_u2f.privateHmacKey)) == 0) {
         // Keys are already initialized with the proper seed and resetGeneration
         return;
     }
-    nvm_write((void *) N_u2f.privateHmacKey, (void *) key, sizeof(N_u2f.privateHmacKey));
+    nvm_write((void*)N_u2f.privateHmacKey, (void*)key,
+              sizeof(N_u2f.privateHmacKey));
 }
 
 void config_init(void) {
@@ -49,23 +51,25 @@ void config_init(void) {
 #else
         tmp32 = 1;
 #endif
-        nvm_write((void *) &N_u2f.authentificationCounter, (void *) &tmp32, sizeof(uint32_t));
+        nvm_write((void*)&N_u2f.authentificationCounter, (void*)&tmp32,
+                  sizeof(uint32_t));
 
         // Initialize keys derived from seed
         derive_and_store_keys();
 
         tmp8 = 1;
-        nvm_write((void *) &N_u2f.initialized, (void *) &tmp8, sizeof(uint8_t));
+        nvm_write((void*)&N_u2f.initialized, (void*)&tmp8, sizeof(uint8_t));
     } else {
         // Check that the seed did not change - if it did, overwrite the keys
         derive_and_store_keys();
     }
 }
 
-uint8_t config_increase_and_get_authentification_counter(uint8_t *buffer) {
+uint8_t config_increase_and_get_authentification_counter(uint8_t* buffer) {
     uint32_t counter = N_u2f.authentificationCounter;
     counter++;
-    nvm_write((void *) &N_u2f.authentificationCounter, &counter, sizeof(uint32_t));
+    nvm_write((void*)&N_u2f.authentificationCounter, &counter,
+              sizeof(uint32_t));
     buffer[0] = ((counter >> 24) & 0xff);
     buffer[1] = ((counter >> 16) & 0xff);
     buffer[2] = ((counter >> 8) & 0xff);

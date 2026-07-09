@@ -16,9 +16,9 @@
 *   limitations under the License.
 ********************************************************************************/
 
-#include "os.h"
-
 #include "globals.h"
+
+#include "os.h"
 
 char verifyName[20];
 char verifyHash[65];

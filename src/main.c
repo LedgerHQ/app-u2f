@@ -16,14 +16,13 @@
 *   limitations under the License.
 ********************************************************************************/
 
+#include "config.h"
+#include "globals.h"
 #include "os.h"
 #include "os_io_seproxyhal.h"
-#include "ux.h"
-
-#include "globals.h"
-#include "config.h"
 #include "u2f_process.h"
 #include "ui_shared.h"
+#include "ux.h"
 
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
@@ -32,7 +31,7 @@ bolos_ux_params_t G_ux_params;
 
 #ifdef HAVE_BAGL
 // override point, but nothing more to do
-void io_seproxyhal_display(const bagl_element_t *element) {
+void io_seproxyhal_display(const bagl_element_t* element) {
     io_seproxyhal_display_default(element);
 }
 #endif
@@ -83,7 +82,8 @@ unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
         case CHANNEL_KEYBOARD:
             break;
 
-        // multiplexed io exchange over a SPI channel and TLV encapsulated protocol
+        // multiplexed io exchange over a SPI channel and TLV encapsulated
+        // protocol
         case CHANNEL_SPI:
             if (tx_len) {
                 io_seproxyhal_spi_send(G_io_apdu_buffer, tx_len);
@@ -94,7 +94,8 @@ unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
                 return 0;  // nothing received from the master so far (it's a tx
                            // transaction)
             } else {
-                return io_seproxyhal_spi_recv(G_io_apdu_buffer, sizeof(G_io_apdu_buffer), 0);
+                return io_seproxyhal_spi_recv(G_io_apdu_buffer,
+                                              sizeof(G_io_apdu_buffer), 0);
             }
 
         default:
@@ -112,13 +113,12 @@ void app_exit(void) {
 #endif /* #ifdef REVAMPED_IO */
             os_sched_exit(-1);
         }
-        FINALLY_L(exit) {
-        }
+        FINALLY_L(exit) {}
     }
     END_TRY_L(exit);
 }
 
-static int u2f_fill_status_code(uint16_t status_code, uint8_t *buffer) {
+static int u2f_fill_status_code(uint16_t status_code, uint8_t* buffer) {
     buffer[0] = status_code >> 8;
     buffer[1] = status_code;
     return 2;
@@ -150,17 +150,14 @@ void sample_main(void) {
                     handleApdu(&flags, &tx, rx);
                 }
             }
-            CATCH(EXCEPTION_IO_RESET) {
-                THROW(EXCEPTION_IO_RESET);
-            }
+            CATCH(EXCEPTION_IO_RESET) { THROW(EXCEPTION_IO_RESET); }
             CATCH_OTHER(e) {
                 // Exception reported by the OS, convert to internal error
                 e = 0x6800 | (e & 0x7FF);
                 tx = u2f_fill_status_code(e, G_io_apdu_buffer);
                 flags = 0;
             }
-            FINALLY {
-            }
+            FINALLY {}
         }
         END_TRY;
     }
@@ -181,8 +178,8 @@ void app_main(void) {
 
                 UX_WAKE_UP();
 
-                // do that at the latest moment to ensure huge delay between usb(0) and
-                // USB(1) upon io_reset exception
+                // do that at the latest moment to ensure huge delay between
+                // usb(0) and USB(1) upon io_reset exception
                 USB_power(0);
                 USB_power(1);
 
@@ -195,8 +192,7 @@ void app_main(void) {
 
                 continue;
             }
-            FINALLY {
-            }
+            FINALLY {}
         }
         END_TRY;
     }
@@ -216,11 +212,8 @@ __attribute__((section(".boot"))) int main(void) {
 
                 app_main();
             }
-            CATCH_OTHER(e) {
-                app_exit();
-            }
-            FINALLY {
-            }
+            CATCH_OTHER(e) { app_exit(); }
+            FINALLY {}
         }
         END_TRY;
     }
