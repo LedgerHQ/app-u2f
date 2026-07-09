@@ -1,6 +1,5 @@
-from utils import generate_random_bytes
-
 from client import TestClient
+from utils import generate_random_bytes
 
 
 def test_authenticate_ok(client: TestClient):
@@ -24,8 +23,6 @@ def test_authenticate_ok(client: TestClient):
 
     challenge = generate_random_bytes(32)
 
-    authentication_data = client.ctap1.authenticate(challenge,
-                                                    app_param,
-                                                    key_handle)
+    authentication_data = client.ctap1.authenticate(challenge, app_param, key_handle)
 
     authentication_data.verify(app_param, challenge, public_key)

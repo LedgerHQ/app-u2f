@@ -1,37 +1,28 @@
-import pytest
 import struct
 
-from fido2.ctap1 import Ctap1, ApduError
-
-from ctap1_client import APDU
+import pytest
 from client import TestClient
+from ctap1_client import APDU
+from fido2.ctap1 import ApduError, Ctap1
 from utils import generate_random_bytes
 
 
 def test_cmd_wrong_cla(client: TestClient):
     # Only supported CLA is 0x00
-    for cla in range(1, 0xff + 1):
+    for cla in range(1, 0xFF + 1):
         with pytest.raises(ApduError) as e:
-            client.ctap1.send_apdu(cla=cla,
-                                   ins=Ctap1.INS.VERSION,
-                                   p1=0x00,
-                                   p2=0x00,
-                                   data=b"")
+            client.ctap1.send_apdu(cla=cla, ins=Ctap1.INS.VERSION, p1=0x00, p2=0x00, data=b"")
         assert e.value.code == APDU.SW_CLA_NOT_SUPPORTED
 
 
 def test_cmd_wrong_ins(client: TestClient):
-    for ins in range(0xff + 1):
+    for ins in range(0xFF + 1):
         # Only supported INS are [0x01, 0x02, 0x03, 0x10]
         if ins in [0x01, 0x02, 0x03, 0x10]:
             continue
 
         with pytest.raises(ApduError) as e:
-            client.ctap1.send_apdu(cla=0x00,
-                                   ins=ins,
-                                   p1=0x00,
-                                   p2=0x00,
-                                   data=b"")
+            client.ctap1.send_apdu(cla=0x00, ins=ins, p1=0x00, p2=0x00, data=b"")
 
         assert e.value.code == APDU.SW_INS_NOT_SUPPORTED
 
@@ -78,7 +69,7 @@ def test_cmd_no_data_encoding(client: TestClient):
     p1 = 0x00
     p2 = 0x00
     nc = 0
-    ne = 0xaabb  # Can be quite anything
+    ne = 0xAABB  # Can be quite anything
 
     # Extended encoding, explicit Lc and Le
     apdu = struct.pack(">BBBBBHH", cla, ins, p1, p2, 0, nc, ne)
@@ -97,7 +88,7 @@ def test_cmd_no_data_encoding(client: TestClient):
     assert e.value.code == APDU.SW_WRONG_LENGTH
 
     # Short encoding (not supported), Lc and Le
-    apdu = struct.pack(">BBBBBB", cla, ins, p1, p2, 0, 0xaa)
+    apdu = struct.pack(">BBBBBB", cla, ins, p1, p2, 0, 0xAA)
     with pytest.raises(ApduError) as e:
         client.ctap1.send_raw_apdu(apdu)
     assert e.value.code == APDU.SW_WRONG_LENGTH

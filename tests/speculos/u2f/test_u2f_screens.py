@@ -1,11 +1,10 @@
-import pytest
 import sys
 import time
 
-from ragger.navigator import NavInsID, NavIns
-
+import pytest
 from client import TESTS_SPECULOS_DIR, TestClient
-from utils import generate_random_bytes, fido_known_appid
+from ragger.navigator import NavIns, NavInsID
+from utils import fido_known_appid, generate_random_bytes
 
 
 def test_u2f_screens_idle(client: TestClient, test_name: str):
@@ -22,11 +21,12 @@ def test_u2f_screens_idle(client: TestClient, test_name: str):
     else:
         instructions = [
             NavIns(NavInsID.USE_CASE_HOME_INFO),
-            NavIns(NavInsID.USE_CASE_SETTINGS_SINGLE_PAGE_EXIT)
+            NavIns(NavInsID.USE_CASE_SETTINGS_SINGLE_PAGE_EXIT),
         ]
 
-    client.navigator.navigate_and_compare(TESTS_SPECULOS_DIR, test_name, instructions,
-                                          screen_change_before_first_instruction=False)
+    client.navigator.navigate_and_compare(
+        TESTS_SPECULOS_DIR, test_name, instructions, screen_change_before_first_instruction=False
+    )
 
 
 @pytest.mark.skipif("--fast" in sys.argv, reason="running in fast mode")
@@ -39,9 +39,9 @@ def test_u2f_screens_fido_known_list(client: TestClient, test_name: str):
         challenge = generate_random_bytes(32)
         test_part_name = test_name + "/reg/" + app_name
         compare_args = (TESTS_SPECULOS_DIR, test_part_name)
-        registration_data = client.ctap1.register(challenge, app_param,
-                                                  check_screens="fast",
-                                                  compare_args=compare_args)
+        registration_data = client.ctap1.register(
+            challenge, app_param, check_screens="fast", compare_args=compare_args
+        )
         registration_data.verify(app_param, challenge)
 
         # Test authentication
@@ -49,10 +49,12 @@ def test_u2f_screens_fido_known_list(client: TestClient, test_name: str):
         challenge = generate_random_bytes(32)
         test_part_name = test_name + "/log/" + app_name
         compare_args = (TESTS_SPECULOS_DIR, test_part_name)
-        authentication_data = client.ctap1.authenticate(challenge,
-                                                        app_param,
-                                                        registration_data.key_handle,
-                                                        check_screens="fast",
-                                                        compare_args=compare_args)
+        authentication_data = client.ctap1.authenticate(
+            challenge,
+            app_param,
+            registration_data.key_handle,
+            check_screens="fast",
+            compare_args=compare_args,
+        )
 
         authentication_data.verify(app_param, challenge, registration_data.public_key)

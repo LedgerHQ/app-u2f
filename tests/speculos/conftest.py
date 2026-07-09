@@ -1,14 +1,12 @@
-import pytest
 from pathlib import Path
-from ledgered.devices import Device
 
+import pytest
+from client import TestClient
+from ledgered.devices import Device
 from ragger.backend import SpeculosBackend
+from ragger.conftest import configuration
 from ragger.navigator import Navigator
 from ragger.utils import find_project_root_dir
-
-from client import TestClient
-
-from ragger.conftest import configuration
 
 #######################
 # CONFIGURATION START #
@@ -25,7 +23,7 @@ configuration.OPTIONAL.BACKEND_SCOPE = "session"
 #####################
 
 # Pull all features from the base ragger conftest using the overridden configuration
-pytest_plugins = ("ragger.conftest.base_conftest", )
+pytest_plugins = ("ragger.conftest.base_conftest",)
 
 
 ##########################
@@ -69,19 +67,20 @@ def prepare_speculos_args(root_pytest_dir: Path, device: Device, display: bool, 
 # Depending on the "--backend" option value, a different backend is
 # instantiated, and the tests will either run on Speculos or on a physical
 # device depending on the backend
-def create_backend(root_pytest_dir: Path, backend_name: str,
-                   device: Device, display: bool, transport: str):
+def create_backend(
+    root_pytest_dir: Path, backend_name: str, device: Device, display: bool, transport: str
+):
     if backend_name.lower() == "speculos":
-        app_path, speculos_args = prepare_speculos_args(root_pytest_dir, device,
-                                                        display, transport)
+        app_path, speculos_args = prepare_speculos_args(root_pytest_dir, device, display, transport)
         return SpeculosBackend(app_path, device, **speculos_args)
     else:
         raise ValueError(f"Backend '{backend_name}' is unknown. Valid backends are: {BACKENDS}")
 
 
 @pytest.fixture(scope="session")
-def backend(root_pytest_dir: Path, backend_name: str, device: Device, display: bool,
-            transport: str):
+def backend(
+    root_pytest_dir: Path, backend_name: str, device: Device, display: bool, transport: str
+):
     with create_backend(root_pytest_dir, backend_name, device, display, transport) as b:
         yield b
 

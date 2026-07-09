@@ -1,20 +1,15 @@
-import pytest
 import socket
 
-from cryptography.x509 import load_der_x509_certificate
-
-from ledgered.devices import DeviceType
-
-from ragger.navigator import NavInsID, NavIns
-
 import fido2
-
+import pytest
+from client import TESTS_SPECULOS_DIR, LedgerAttestationVerifier, TestClient
+from cryptography.x509 import load_der_x509_certificate
+from ctap1_client import APDU, U2F_P1
 from fido2.ctap1 import ApduError, Ctap1, RegistrationData
 from fido2.hid import CTAPHID
 from fido2.webauthn import AttestationObject
-
-from client import TESTS_SPECULOS_DIR, TestClient, LedgerAttestationVerifier
-from ctap1_client import APDU, U2F_P1
+from ledgered.devices import DeviceType
+from ragger.navigator import NavIns, NavInsID
 from utils import FIDO_RP_ID_HASH_1, generate_random_bytes
 
 
@@ -24,9 +19,9 @@ def test_register_ok(client: TestClient, test_name: str):
 
     compare_args = (TESTS_SPECULOS_DIR, test_name)
 
-    registration_data = client.ctap1.register(challenge, app_param,
-                                              check_screens="full",
-                                              compare_args=compare_args)
+    registration_data = client.ctap1.register(
+        challenge, app_param, check_screens="full", compare_args=compare_args
+    )
     registration_data.verify(app_param, challenge)
 
 
@@ -60,9 +55,9 @@ def test_register_user_refused(client: TestClient, test_name: str):
     compare_args = (TESTS_SPECULOS_DIR, test_name)
 
     with pytest.raises(ApduError) as e:
-        client.ctap1.register(challenge, app_param, user_accept=False,
-                              check_screens="full",
-                              compare_args=compare_args)
+        client.ctap1.register(
+            challenge, app_param, user_accept=False, check_screens="full", compare_args=compare_args
+        )
 
     assert e.value.code == APDU.SW_PROPRIETARY_INTERNAL
 
@@ -153,12 +148,8 @@ def test_register_raw(client: TestClient):
 
     # On U2F endpoint, the device should return APDU.SW_CONDITIONS_NOT_SATISFIED
     # until user validate.
-    for i in range(5):
-        client.ctap1.send_apdu_nowait(cla=0x00,
-                                      ins=Ctap1.INS.REGISTER,
-                                      p1=0x00,
-                                      p2=0x00,
-                                      data=data)
+    for _ in range(5):
+        client.ctap1.send_apdu_nowait(cla=0x00, ins=Ctap1.INS.REGISTER, p1=0x00, p2=0x00, data=data)
 
         response = client.ctap1.device.recv(CTAPHID.MSG)
 
@@ -170,11 +161,7 @@ def test_register_raw(client: TestClient):
     # Confirm request
     client.ctap1.confirm()
 
-    client.ctap1.send_apdu_nowait(cla=0x00,
-                                  ins=Ctap1.INS.REGISTER,
-                                  p1=0x00,
-                                  p2=0x00,
-                                  data=data)
+    client.ctap1.send_apdu_nowait(cla=0x00, ins=Ctap1.INS.REGISTER, p1=0x00, p2=0x00, data=data)
 
     response = client.ctap1.device.recv(CTAPHID.MSG)
     client.ctap1.wait_for_return_on_dashboard()
@@ -205,11 +192,7 @@ def test_register_raw_u2f_fake_channel_security_crc(client: TestClient):
 
         # On U2F endpoint, the device should return APDU.SW_CONDITIONS_NOT_SATISFIED
         # until user validate, except if the request change!
-        client.ctap1.send_apdu_nowait(cla=0x00,
-                                      ins=Ctap1.INS.REGISTER,
-                                      p1=p1,
-                                      p2=0x00,
-                                      data=data)
+        client.ctap1.send_apdu_nowait(cla=0x00, ins=Ctap1.INS.REGISTER, p1=p1, p2=0x00, data=data)
 
         response = client.ctap1.device.recv(CTAPHID.MSG)
 
@@ -225,19 +208,16 @@ def test_register_raw_u2f_fake_channel_security_crc(client: TestClient):
         challenge[0] ^= 0x40
         data = challenge + app_param
 
-        client.ctap1.send_apdu_nowait(cla=0x00,
-                                      ins=Ctap1.INS.REGISTER,
-                                      p1=p1,
-                                      p2=0x00,
-                                      data=data)
+        client.ctap1.send_apdu_nowait(cla=0x00, ins=Ctap1.INS.REGISTER, p1=p1, p2=0x00, data=data)
 
         with pytest.raises(socket.timeout) as e:
             response = client.ctap1.device.recv(CTAPHID.MSG)
 
         if client.device.type == DeviceType.STAX:
             # Patch issue with click ignored on Speculos after a EXCEPTION_IO_RESET
-            client.navigator.navigate([NavIns(NavInsID.TAPPABLE_CENTER_TAP)],
-                                      screen_change_after_last_instruction=False)
+            client.navigator.navigate(
+                [NavIns(NavInsID.TAPPABLE_CENTER_TAP)], screen_change_after_last_instruction=False
+            )
 
         # App should then recover and allow new requests
         client.ctap1.wait_for_return_on_dashboard()
@@ -259,11 +239,7 @@ def test_register_raw_u2f_fake_channel_security_length(client: TestClient):
 
     # On U2F endpoint, the device should return APDU.SW_CONDITIONS_NOT_SATISFIED
     # until user validate, except if the request change!
-    client.ctap1.send_apdu_nowait(cla=0x00,
-                                  ins=Ctap1.INS.REGISTER,
-                                  p1=0x00,
-                                  p2=0x00,
-                                  data=data)
+    client.ctap1.send_apdu_nowait(cla=0x00, ins=Ctap1.INS.REGISTER, p1=0x00, p2=0x00, data=data)
 
     response = client.ctap1.device.recv(CTAPHID.MSG)
 
@@ -279,19 +255,16 @@ def test_register_raw_u2f_fake_channel_security_length(client: TestClient):
     challenge2 = challenge[:-1]
     data = challenge2 + app_param
 
-    client.ctap1.send_apdu_nowait(cla=0x00,
-                                  ins=Ctap1.INS.REGISTER,
-                                  p1=0x00,
-                                  p2=0x00,
-                                  data=data)
+    client.ctap1.send_apdu_nowait(cla=0x00, ins=Ctap1.INS.REGISTER, p1=0x00, p2=0x00, data=data)
 
     with pytest.raises(socket.timeout) as e:
         response = client.ctap1.device.recv(CTAPHID.MSG)
 
     if client.device.type == DeviceType.STAX:
         # Patch issue with click ignored on Speculos after a EXCEPTION_IO_RESET
-        client.navigator.navigate([NavIns(NavInsID.TAPPABLE_CENTER_TAP)],
-                                  screen_change_after_last_instruction=False)
+        client.navigator.navigate(
+            [NavIns(NavInsID.TAPPABLE_CENTER_TAP)], screen_change_after_last_instruction=False
+        )
 
     # App should then recover and allow new requests
     client.ctap1.wait_for_return_on_dashboard()
@@ -316,23 +289,15 @@ def test_register_wrong_p1p2(client: TestClient):
         0x00,
         U2F_P1.REQUEST_USER_PRESENCE,
     ]
-    for p1 in range(0xff + 1):
+    for p1 in range(0xFF + 1):
         if p1 in valid_p1:
             continue
         with pytest.raises(ApduError) as e:
-            client.ctap1.send_apdu(cla=0x00,
-                                   ins=Ctap1.INS.REGISTER,
-                                   p1=p1,
-                                   p2=0x00,
-                                   data=data)
+            client.ctap1.send_apdu(cla=0x00, ins=Ctap1.INS.REGISTER, p1=p1, p2=0x00, data=data)
         assert e.value.code == APDU.SW_INCORRECT_P1P2
 
     # Only supported P2 is 0x00
-    for p2 in range(1, 0xff + 1):
+    for p2 in range(1, 0xFF + 1):
         with pytest.raises(ApduError) as e:
-            client.ctap1.send_apdu(cla=0x00,
-                                   ins=Ctap1.INS.REGISTER,
-                                   p1=0x00,
-                                   p2=p2,
-                                   data=data)
+            client.ctap1.send_apdu(cla=0x00, ins=Ctap1.INS.REGISTER, p1=0x00, p2=p2, data=data)
         assert e.value.code == APDU.SW_INCORRECT_P1P2
