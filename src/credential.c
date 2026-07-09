@@ -16,36 +16,29 @@
 *   limitations under the License.
 ********************************************************************************/
 
+#include "credential.h"
+
 #include <string.h>
 
-#include "os.h"
-#include "cx.h"
-
-#include "credential.h"
-#include "crypto.h"
 #include "config.h"
+#include "crypto.h"
+#include "cx.h"
+#include "os.h"
 
-static void compute_signature(const uint8_t *rpIdHash,
-                              const cx_ecfp_private_key_t *private_key,
-                              uint8_t *signatureBuffer) {
+static void compute_signature(const uint8_t* rpIdHash,
+                              const cx_ecfp_private_key_t* private_key,
+                              uint8_t* signatureBuffer) {
     cx_hmac_sha256_t hmacCtx;
 
-    cx_hmac_sha256_init(&hmacCtx,
-                        (const uint8_t *) N_u2f.privateHmacKey,
+    cx_hmac_sha256_init(&hmacCtx, (const uint8_t*)N_u2f.privateHmacKey,
                         sizeof(N_u2f.privateHmacKey));
-    cx_hmac((cx_hmac_t *) &hmacCtx, 0, rpIdHash, CX_SHA256_SIZE, NULL, 0);
-    cx_hmac((cx_hmac_t *) &hmacCtx,
-            CX_LAST,
-            private_key->d,
-            32,
-            signatureBuffer,
+    cx_hmac((cx_hmac_t*)&hmacCtx, 0, rpIdHash, CX_SHA256_SIZE, NULL, 0);
+    cx_hmac((cx_hmac_t*)&hmacCtx, CX_LAST, private_key->d, 32, signatureBuffer,
             CREDENTIAL_SIGNATURE_SIZE);
 }
 
-int credential_wrap(const uint8_t *rpIdHash,
-                    const uint8_t *nonce,
-                    const cx_ecfp_private_key_t *private_key,
-                    uint8_t *buffer,
+int credential_wrap(const uint8_t* rpIdHash, const uint8_t* nonce,
+                    const cx_ecfp_private_key_t* private_key, uint8_t* buffer,
                     uint32_t bufferLen) {
     int offset = 0;
 
@@ -71,10 +64,8 @@ int credential_wrap(const uint8_t *rpIdHash,
     return offset;
 }
 
-int credential_unwrap(const uint8_t *rpIdHash,
-                      uint8_t *credId,
-                      uint32_t credIdLen,
-                      uint8_t **noncePtr) {
+int credential_unwrap(const uint8_t* rpIdHash, uint8_t* credId,
+                      uint32_t credIdLen, uint8_t** noncePtr) {
     cx_ecfp_private_key_t private_key;
     uint8_t computedSignature[CREDENTIAL_SIGNATURE_SIZE];
 
@@ -91,8 +82,7 @@ int credential_unwrap(const uint8_t *rpIdHash,
     compute_signature(rpIdHash, &private_key, computedSignature);
     explicit_bzero(&private_key, sizeof(private_key));
 
-    if (!crypto_compare(computedSignature,
-                        credId + CREDENTIAL_NONCE_SIZE,
+    if (!crypto_compare(computedSignature, credId + CREDENTIAL_NONCE_SIZE,
                         CREDENTIAL_SIGNATURE_SIZE)) {
         PRINTF("Wrong signature\n");
         explicit_bzero(computedSignature, sizeof(computedSignature));

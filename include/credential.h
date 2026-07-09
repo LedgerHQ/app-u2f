@@ -19,6 +19,10 @@
 #ifndef __CREDENTIAL_H__
 #define __CREDENTIAL_H__
 
+#include <stdint.h>
+
+#include "cx.h"
+
 #define CREDENTIAL_NONCE_SIZE       32
 #define CREDENTIAL_PRIVATE_KEY_SIZE CX_SHA256_SIZE
 #define CREDENTIAL_SIGNATURE_SIZE   CX_SHA256_SIZE

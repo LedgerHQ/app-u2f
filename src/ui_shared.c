@@ -16,11 +16,11 @@
 *   limitations under the License.
 ********************************************************************************/
 
-#include "ux.h"
+#include "ui_shared.h"
 
 #include "glyphs.h"
 #include "os.h"
-#include "ui_shared.h"
+#include "ux.h"
 
 static void app_quit(void) {
 #ifdef REVAMPED_IO
@@ -33,26 +33,23 @@ static void app_quit(void) {
 
 #if defined(HAVE_BAGL)
 
-UX_STEP_NOCB(ux_idle_flow_1_step,
-             nn,
+UX_STEP_NOCB(ux_idle_flow_1_step, nn,
              {
                  "Ready to",
                  "authenticate",
              });
-UX_STEP_NOCB(ux_idle_flow_2_step,
-             bn,
+UX_STEP_NOCB(ux_idle_flow_2_step, bn,
              {
                  "Version",
                  APPVERSION,
              });
-UX_STEP_CB(ux_idle_flow_3_step,
-           pb,
-           app_quit(),
+UX_STEP_CB(ux_idle_flow_3_step, pb, app_quit(),
            {
                &C_icon_dashboard,
                "Quit",
            });
-UX_FLOW(ux_idle_flow, &ux_idle_flow_1_step, &ux_idle_flow_2_step, &ux_idle_flow_3_step);
+UX_FLOW(ux_idle_flow, &ux_idle_flow_1_step, &ux_idle_flow_2_step,
+        &ux_idle_flow_3_step);
 
 void ui_idle(void) {
     // reserve a display stack slot if none yet
@@ -76,8 +73,8 @@ static bool nav_callback(uint8_t page, nbgl_pageContent_t* content) {
     UNUSED(page);
     content->type = INFOS_LIST;
     content->infosList.nbInfos = 2;
-    content->infosList.infoTypes = (const char**) INFO_TYPES;
-    content->infosList.infoContents = (const char**) INFO_CONTENTS;
+    content->infosList.infoTypes = (const char**)INFO_TYPES;
+    content->infosList.infoContents = (const char**)INFO_CONTENTS;
     return true;
 }
 
@@ -86,12 +83,10 @@ static void ui_menu_about() {
 }
 
 void ui_idle(void) {
-    nbgl_useCaseHome(APPNAME,
-                     &C_stax_id_64px,
-                     "This app enables using\nyour Ledger device for\nTwo Factor Authentication.",
-                     false,
-                     ui_menu_about,
-                     app_quit);
+    nbgl_useCaseHome(APPNAME, &C_stax_id_64px,
+                     "This app enables using\nyour Ledger device for\nTwo "
+                     "Factor Authentication.",
+                     false, ui_menu_about, app_quit);
 }
 
 #endif
