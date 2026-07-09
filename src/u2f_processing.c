@@ -659,8 +659,8 @@ static void u2f_handle_apdu_enroll(unsigned char *flags, unsigned short *tx, uin
             reg_req->application_param,
             sizeof(reg_req->application_param));
 
-#ifndef HAVE_NO_USER_PRESENCE_CHECK
     globals_get_u2f_data()->user_presence_request_type = G_io_apdu_buffer[OFFSET_INS];
+#ifndef HAVE_NO_USER_PRESENCE_CHECK
     if (G_io_u2f.media == U2F_MEDIA_USB) {
         u2f_message_set_autoreply_wait_user_presence(&G_io_u2f, true);
     }
@@ -727,8 +727,8 @@ static void u2f_handle_apdu_sign(unsigned char *flags, unsigned short *tx, uint3
             auth_req_base->application_param,
             sizeof(auth_req_base->application_param));
 
-#ifndef HAVE_NO_USER_PRESENCE_CHECK
     globals_get_u2f_data()->user_presence_request_type = G_io_apdu_buffer[OFFSET_INS];
+#ifndef HAVE_NO_USER_PRESENCE_CHECK
     if (G_io_u2f.media == U2F_MEDIA_USB) {
         u2f_message_set_autoreply_wait_user_presence(&G_io_u2f, true);
     }
