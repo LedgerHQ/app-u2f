@@ -152,7 +152,7 @@ CFLAGS  += -O3 -Os
 AS      := $(GCCPATH)arm-none-eabi-gcc
 LD      := $(GCCPATH)arm-none-eabi-gcc
 LDFLAGS += -O3 -Os
-LDLIBS  += -lm -lgcc -lc
+LDLIBS  += -lm -lc
 
 # Remove warning on custom snprintf implementation usage
 CFLAGS += -Wno-format-invalid-specifier -Wno-format-extra-args
