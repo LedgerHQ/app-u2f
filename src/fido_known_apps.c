@@ -22,7 +22,7 @@
 
 typedef struct {
     unsigned char sha256[32];
-    const char *name;
+    const char* name;
 } fido_known_appid_t;
 
 static const fido_known_appid_t fido_known_appid[] = {
@@ -188,11 +188,12 @@ static const fido_known_appid_t fido_known_appid[] = {
      "demo.yubico.com"},
 };
 
-const char *fido_match_known_appid(const uint8_t *applicationParameter) {
+const char* fido_match_known_appid(const uint8_t* applicationParameter) {
     unsigned int i;
-    for (i = 0; i < sizeof(fido_known_appid) / sizeof(fido_known_appid[0]); i++) {
+    for (i = 0; i < sizeof(fido_known_appid) / sizeof(fido_known_appid[0]);
+         i++) {
         if (memcmp(applicationParameter, fido_known_appid[i].sha256, 32) == 0) {
-            return (const char *) PIC(fido_known_appid[i].name);
+            return (const char*)PIC(fido_known_appid[i].name);
         }
     }
     return NULL;

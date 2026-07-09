@@ -1,21 +1,17 @@
 import os
 import socket
 import struct
-
-from cryptography.x509 import load_pem_x509_certificate
-from cryptography.hazmat.primitives import serialization
-
 from pathlib import Path
 
-from ragger.backend import SpeculosBackend
-from ragger.navigator import Navigator
-
+from cryptography.hazmat.primitives import serialization
+from cryptography.x509 import load_pem_x509_certificate
+from ctap1_client import LedgerCtap1
 from fido2.attestation import AttestationVerifier
 from fido2.ctap import CtapError
-from fido2.hid import CtapHidDevice, TYPE_INIT, CAPABILITY, CTAPHID
+from fido2.hid import CAPABILITY, CTAPHID, TYPE_INIT, CtapHidDevice
 from fido2.hid.base import CtapHidConnection, HidDescriptor
-
-from ctap1_client import LedgerCtap1
+from ragger.backend import SpeculosBackend
+from ragger.navigator import Navigator
 
 TESTS_SPECULOS_DIR = Path(__file__).absolute().parent
 REPO_ROOT_DIR = TESTS_SPECULOS_DIR.parent.parent
@@ -46,14 +42,15 @@ class LedgerAttestationVerifier(AttestationVerifier):
 
 
 class LedgerCtapHidConnection(CtapHidConnection):
-    """ Overriding fido2.hid.base.CtapHidConnection
+    """Overriding fido2.hid.base.CtapHidConnection
 
     This is mostly a redirection of write_packet() and read_packet()
     to speculos raw socket.
     """
+
     def __init__(self, transport, debug=False):
-        self.sock = socket.create_connection(('127.0.0.1', 5001))
-        self.u2f_hid_endpoint = (transport.upper() == "U2F")
+        self.sock = socket.create_connection(("127.0.0.1", 5001))
+        self.u2f_hid_endpoint = transport.upper() == "U2F"
         self.debug = debug
 
         # Set a timeout to allow tests to raise on socket rx failure
@@ -63,19 +60,19 @@ class LedgerCtapHidConnection(CtapHidConnection):
         packet = bytes(packet)
         if self.debug:
             print(f"> pkt = {packet.hex()}")
-        self.sock.send(struct.pack('>I', len(packet)) + packet)
+        self.sock.send(struct.pack(">I", len(packet)) + packet)
 
     def read_packet(self):
-        resp_size_bytes = b''
+        resp_size_bytes = b""
         while len(resp_size_bytes) < 4:
             new_bytes = self.sock.recv(4 - len(resp_size_bytes))
             assert new_bytes, "connection closed"
             resp_size_bytes += new_bytes
-        resp_size = (int.from_bytes(resp_size_bytes, 'big') + 2) & 0xffffffff
+        resp_size = (int.from_bytes(resp_size_bytes, "big") + 2) & 0xFFFFFFFF
         if self.u2f_hid_endpoint:
             assert resp_size == 64
 
-        packet = b''
+        packet = b""
         while len(packet) < resp_size:
             new_bytes = self.sock.recv(resp_size - len(packet))
             assert new_bytes, "connection closed"
@@ -90,7 +87,7 @@ class LedgerCtapHidConnection(CtapHidConnection):
 
 
 class LedgerCtapHidDevice(CtapHidDevice):
-    """ Overriding fido2.hid.CtapHidDevice
+    """Overriding fido2.hid.CtapHidDevice
 
     This is mostly to split call() function in send() and recv() functions.
     This allow Ctap1 and Ctap2 clients to interact with the buttons between
@@ -99,8 +96,9 @@ class LedgerCtapHidDevice(CtapHidDevice):
     This overriding also handle the particularity of sending commands over
     the raw HID endpoint, which means without using the U2F HID encapsulation.
     """
+
     def __init__(self, descriptor, connection, transport, debug=False):
-        self.raw_hid_endpoint = (transport.upper() == "HID")
+        self.raw_hid_endpoint = transport.upper() == "HID"
         self.debug = debug
         super().__init__(descriptor, connection)
 
@@ -181,11 +179,12 @@ class LedgerCtapHidDevice(CtapHidDevice):
                 response = data  # Nonce
                 u2fhid_version = 0x02
                 capabilities = CAPABILITY.CBOR
-                response += struct.pack(">IBBBBB", self._channel_id,
-                                        u2fhid_version, 0, 0, 0, capabilities)
+                response += struct.pack(
+                    ">IBBBBB", self._channel_id, u2fhid_version, 0, 0, 0, capabilities
+                )
                 return response
 
-            raise ValueError("Unexpected cmd over HID endpoint {}".format(hex(cmd)))
+            raise ValueError(f"Unexpected cmd over HID endpoint {hex(cmd)}")
 
         self.send(cmd, data)
         return self.recv(cmd)
@@ -201,8 +200,9 @@ class LedgerCtapHidDevice(CtapHidDevice):
 
 
 class TestClient:
-    def __init__(self, backend: SpeculosBackend, navigator: Navigator, transport,
-                 debug: bool = False):
+    def __init__(
+        self, backend: SpeculosBackend, navigator: Navigator, transport, debug: bool = False
+    ):
         self.device = backend.device
         self.backend = backend
         self.navigator = navigator
@@ -210,8 +210,8 @@ class TestClient:
 
         # USB transport configuration
         self.USB_transport = transport
-        self.use_U2F_endpoint = (self.USB_transport.upper() == "U2F")
-        self.use_raw_HID_endpoint = (self.USB_transport.upper() == "HID")
+        self.use_U2F_endpoint = self.USB_transport.upper() == "U2F"
+        self.use_raw_HID_endpoint = self.USB_transport.upper() == "HID"
         if not self.use_U2F_endpoint and not self.use_raw_HID_endpoint:
             assert ValueError("Invalid endpoint")
 
@@ -219,11 +219,9 @@ class TestClient:
         try:
             hid_dev = LedgerCtapHidConnection(self.USB_transport, self.debug)
             descriptor = HidDescriptor("sim", 0, 0, 64, 64, "speculos", "0000")
-            self.dev = LedgerCtapHidDevice(descriptor, hid_dev,
-                                           self.USB_transport, self.debug)
+            self.dev = LedgerCtapHidDevice(descriptor, hid_dev, self.USB_transport, self.debug)
 
-            self.ctap1 = LedgerCtap1(self.dev, self.device, self.navigator,
-                                     self.debug)
+            self.ctap1 = LedgerCtap1(self.dev, self.device, self.navigator, self.debug)
 
         except Exception as e:
             raise e

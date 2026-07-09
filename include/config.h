@@ -19,6 +19,8 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
+#include <stdint.h>
+
 #define PRIVATE_KEY_PATH 0x80553246  // "U2F".encode("ascii").hex()
 
 typedef struct config_t {

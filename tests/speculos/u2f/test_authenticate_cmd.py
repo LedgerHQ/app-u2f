@@ -1,17 +1,15 @@
+import struct
+
 import cryptography
 import pytest
-import struct
-from typing import Optional
-
-from fido2.ctap1 import Ctap1, ApduError, SignatureData
-from fido2.hid import CTAPHID
-
 from client import TESTS_SPECULOS_DIR, TestClient
 from ctap1_client import APDU, U2F_P1
+from fido2.ctap1 import ApduError, Ctap1, SignatureData
+from fido2.hid import CTAPHID
 from utils import FIDO_RP_ID_HASH_1, generate_random_bytes
 
 
-def register(client: TestClient, _app_param: Optional[bytes] = None):
+def register(client: TestClient, _app_param: bytes | None = None):
     challenge = generate_random_bytes(32)
     if _app_param:
         app_param = _app_param
@@ -28,11 +26,9 @@ def test_authenticate_check_only_ok(client: TestClient):
     challenge = generate_random_bytes(32)
 
     with pytest.raises(ApduError) as e:
-        client.ctap1.authenticate(challenge,
-                                  app_param,
-                                  registration_data.key_handle,
-                                  check_only=True,
-                                  user_accept=None)
+        client.ctap1.authenticate(
+            challenge, app_param, registration_data.key_handle, check_only=True, user_accept=None
+        )
 
     # 0x07 ("check-only"): if the control byte is set to 0x07 by the FIDO Client,
     # the U2F token is supposed to simply check whether the provided key handle
@@ -52,11 +48,9 @@ def test_authenticate_check_only_wrong_key_handle(client: TestClient):
     key_handle[0] ^= 0x40
 
     with pytest.raises(ApduError) as e:
-        client.ctap1.authenticate(challenge,
-                                  app_param,
-                                  key_handle,
-                                  check_only=True,
-                                  user_accept=None)
+        client.ctap1.authenticate(
+            challenge, app_param, key_handle, check_only=True, user_accept=None
+        )
 
     assert e.value.code == APDU.SW_WRONG_DATA
 
@@ -71,11 +65,9 @@ def test_authenticate_check_only_wrong_app_param(client: TestClient):
     app_param[0] ^= 0x40
 
     with pytest.raises(ApduError) as e:
-        client.ctap1.authenticate(challenge,
-                                  app_param,
-                                  key_handle,
-                                  check_only=True,
-                                  user_accept=None)
+        client.ctap1.authenticate(
+            challenge, app_param, key_handle, check_only=True, user_accept=None
+        )
 
     assert e.value.code == APDU.SW_WRONG_DATA
 
@@ -86,11 +78,13 @@ def test_authenticate_ok(client: TestClient, test_name: str):
 
     compare_args = (TESTS_SPECULOS_DIR, test_name)
 
-    authentication_data = client.ctap1.authenticate(challenge,
-                                                    app_param,
-                                                    registration_data.key_handle,
-                                                    check_screens="full",
-                                                    compare_args=compare_args)
+    authentication_data = client.ctap1.authenticate(
+        challenge,
+        app_param,
+        registration_data.key_handle,
+        check_screens="full",
+        compare_args=compare_args,
+    )
 
     authentication_data.verify(app_param, challenge, registration_data.public_key)
 
@@ -102,12 +96,14 @@ def test_authenticate_user_refused(client: TestClient, test_name: str):
     compare_args = (TESTS_SPECULOS_DIR, test_name)
 
     with pytest.raises(ApduError) as e:
-        client.ctap1.authenticate(challenge,
-                                  app_param,
-                                  registration_data.key_handle,
-                                  user_accept=False,
-                                  check_screens="full",
-                                  compare_args=compare_args)
+        client.ctap1.authenticate(
+            challenge,
+            app_param,
+            registration_data.key_handle,
+            user_accept=False,
+            check_screens="full",
+            compare_args=compare_args,
+        )
 
     assert e.value.code == APDU.SW_PROPRIETARY_INTERNAL
 
@@ -118,9 +114,9 @@ def test_authenticate_with_reboot_ok(client: TestClient):
 
     client.simulate_reboot()
 
-    authentication_data = client.ctap1.authenticate(challenge,
-                                                    app_param,
-                                                    registration_data.key_handle)
+    authentication_data = client.ctap1.authenticate(
+        challenge, app_param, registration_data.key_handle
+    )
 
     authentication_data.verify(app_param, challenge, registration_data.public_key)
 
@@ -134,9 +130,9 @@ def test_authenticate_multiple_ok(client: TestClient):
     for app_param, registration_data in registrations:
         challenge = generate_random_bytes(32)
 
-        authentication_data = client.ctap1.authenticate(challenge,
-                                                        app_param,
-                                                        registration_data.key_handle)
+        authentication_data = client.ctap1.authenticate(
+            challenge, app_param, registration_data.key_handle
+        )
 
         authentication_data.verify(app_param, challenge, registration_data.public_key)
 
@@ -148,9 +144,9 @@ def test_authenticate_counter_increment(client: TestClient):
     for _ in range(5):
         challenge = generate_random_bytes(32)
 
-        authentication_data = client.ctap1.authenticate(challenge,
-                                                        app_param,
-                                                        registration_data.key_handle)
+        authentication_data = client.ctap1.authenticate(
+            challenge, app_param, registration_data.key_handle
+        )
 
         authentication_data.verify(app_param, challenge, registration_data.public_key)
 
@@ -170,10 +166,7 @@ def test_authenticate_no_registration(client: TestClient):
     app_param = generate_random_bytes(32)
 
     with pytest.raises(ApduError) as e:
-        client.ctap1.authenticate(challenge,
-                                  app_param,
-                                  key_handle,
-                                  user_accept=None)
+        client.ctap1.authenticate(challenge, app_param, key_handle, user_accept=None)
 
     assert e.value.code == APDU.SW_WRONG_DATA
 
@@ -182,9 +175,9 @@ def test_authenticate_wrong_challenge(client: TestClient):
     app_param, registration_data = register(client)
     challenge = bytearray(generate_random_bytes(32))
 
-    authentication_data = client.ctap1.authenticate(challenge,
-                                                    app_param,
-                                                    registration_data.key_handle)
+    authentication_data = client.ctap1.authenticate(
+        challenge, app_param, registration_data.key_handle
+    )
 
     # Change challenge first bit
     challenge[0] ^= 0x40
@@ -202,10 +195,9 @@ def test_authenticate_wrong_app_param(client: TestClient):
     app_param[0] ^= 0x40
 
     with pytest.raises(ApduError) as e:
-        client.ctap1.authenticate(challenge,
-                                  app_param,
-                                  registration_data.key_handle,
-                                  user_accept=None)
+        client.ctap1.authenticate(
+            challenge, app_param, registration_data.key_handle, user_accept=None
+        )
 
     assert e.value.code == APDU.SW_WRONG_DATA
 
@@ -219,10 +211,7 @@ def test_authenticate_wrong_key_handle(client: TestClient):
     key_handle[0] ^= 0x40
 
     with pytest.raises(ApduError) as e:
-        client.ctap1.authenticate(challenge,
-                                  app_param,
-                                  key_handle,
-                                  user_accept=None)
+        client.ctap1.authenticate(challenge, app_param, key_handle, user_accept=None)
 
     assert e.value.code == APDU.SW_WRONG_DATA
 
@@ -235,10 +224,7 @@ def test_authenticate_length_too_short(client: TestClient):
     key_handle = registration_data.key_handle[:62]
 
     with pytest.raises(ApduError) as e:
-        client.ctap1.authenticate(challenge,
-                                  app_param,
-                                  key_handle,
-                                  user_accept=None)
+        client.ctap1.authenticate(challenge, app_param, key_handle, user_accept=None)
 
     assert e.value.code == APDU.SW_WRONG_DATA
 
@@ -251,10 +237,7 @@ def test_authenticate_length_too_long(client: TestClient):
     key_handle = registration_data.key_handle + generate_random_bytes(1)
 
     with pytest.raises(ApduError) as e:
-        client.ctap1.authenticate(challenge,
-                                  app_param,
-                                  key_handle,
-                                  user_accept=None)
+        client.ctap1.authenticate(challenge, app_param, key_handle, user_accept=None)
 
     assert e.value.code == APDU.SW_WRONG_DATA
 
@@ -265,33 +248,25 @@ def test_authenticate_wrong_p1p2(client: TestClient):
     key_handle = registration_data.key_handle
 
     # Craft nominal packet data
-    data = (challenge + app_param + struct.pack(">B", len(key_handle)) + key_handle)
+    data = challenge + app_param + struct.pack(">B", len(key_handle)) + key_handle
 
     # Valid P1 are:
     valid_p1 = [
         U2F_P1.CHECK_IS_REGISTERED,
         U2F_P1.REQUEST_USER_PRESENCE,
-        U2F_P1.OPTIONAL_USER_PRESENCE
+        U2F_P1.OPTIONAL_USER_PRESENCE,
     ]
-    for p1 in range(0xff + 1):
+    for p1 in range(0xFF + 1):
         if p1 in valid_p1:
             continue
         with pytest.raises(ApduError) as e:
-            client.ctap1.send_apdu(cla=0x00,
-                                   ins=Ctap1.INS.AUTHENTICATE,
-                                   p1=p1,
-                                   p2=0x00,
-                                   data=data)
+            client.ctap1.send_apdu(cla=0x00, ins=Ctap1.INS.AUTHENTICATE, p1=p1, p2=0x00, data=data)
         assert e.value.code == APDU.SW_INCORRECT_P1P2
 
     # Only supported P2 is 0x00
-    for p2 in range(1, 0xff + 1):
+    for p2 in range(1, 0xFF + 1):
         with pytest.raises(ApduError) as e:
-            client.ctap1.send_apdu(cla=0x00,
-                                   ins=Ctap1.INS.AUTHENTICATE,
-                                   p1=0x00,
-                                   p2=p2,
-                                   data=data)
+            client.ctap1.send_apdu(cla=0x00, ins=Ctap1.INS.AUTHENTICATE, p1=0x00, p2=p2, data=data)
         assert e.value.code == APDU.SW_INCORRECT_P1P2
 
 
@@ -302,7 +277,7 @@ def test_authenticate_raw(client: TestClient):
     valid_p1 = [
         U2F_P1.CHECK_IS_REGISTERED,
         U2F_P1.REQUEST_USER_PRESENCE,
-        U2F_P1.OPTIONAL_USER_PRESENCE
+        U2F_P1.OPTIONAL_USER_PRESENCE,
     ]
     for p1 in valid_p1:
         app_param, registration_data = register(client)
@@ -313,8 +288,7 @@ def test_authenticate_raw(client: TestClient):
         data = challenge + app_param + key_handle_len + key_handle
 
         if p1 == U2F_P1.CHECK_IS_REGISTERED:
-            client.ctap1.send_apdu_nowait(ins=Ctap1.INS.AUTHENTICATE,
-                                          p1=p1, data=data)
+            client.ctap1.send_apdu_nowait(ins=Ctap1.INS.AUTHENTICATE, p1=p1, data=data)
             response = client.ctap1.device.recv(CTAPHID.MSG)
             with pytest.raises(ApduError) as e:
                 client.ctap1.parse_response(response)
@@ -323,9 +297,8 @@ def test_authenticate_raw(client: TestClient):
         else:
             # On U2F endpoint, the device should return APDU.SW_CONDITIONS_NOT_SATISFIED
             # until user validate.
-            for i in range(5):
-                client.ctap1.send_apdu_nowait(ins=Ctap1.INS.AUTHENTICATE,
-                                              p1=p1, data=data)
+            for _ in range(5):
+                client.ctap1.send_apdu_nowait(ins=Ctap1.INS.AUTHENTICATE, p1=p1, data=data)
 
                 response = client.ctap1.device.recv(CTAPHID.MSG)
 
@@ -337,8 +310,7 @@ def test_authenticate_raw(client: TestClient):
             # Confirm request
             client.ctap1.confirm()
 
-            client.ctap1.send_apdu_nowait(ins=Ctap1.INS.AUTHENTICATE,
-                                          p1=p1, data=data)
+            client.ctap1.send_apdu_nowait(ins=Ctap1.INS.AUTHENTICATE, p1=p1, data=data)
 
             response = client.ctap1.device.recv(CTAPHID.MSG)
             client.ctap1.wait_for_return_on_dashboard()

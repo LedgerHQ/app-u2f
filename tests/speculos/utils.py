@@ -3,9 +3,9 @@ import struct
 
 from fido2.utils import sha256
 
-
-FIDO_RP_ID_HASH_1 = bytes.fromhex("000102030405060708090a0b0c0d0e0f"
-                                  "101112131415161718191a1b1c1d1e1f")
+FIDO_RP_ID_HASH_1 = bytes.fromhex(
+    "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+)
 
 
 def prepare_apdu(cla=0, ins=0, p1=0, p2=0, data=b""):
@@ -68,5 +68,4 @@ def parse_identifier_screen(app_param, speculos_client):
 
     expected = app_param.hex().upper()
     if identifier_text != expected:
-        raise ValueError("Expecting {} instead of {}".format(
-                         repr(expected), repr(identifier_text)))
+        raise ValueError(f"Expecting {expected!r} instead of {identifier_text!r}")

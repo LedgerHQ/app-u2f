@@ -7,29 +7,15 @@ on:
 jobs:
   job_lint_C:
     name: Lint C code
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest
-
-    steps:
-      - name: Clone
-        uses: actions/checkout@v4
-
-      - name: Lint C code
-        run: clang-format --dry-run --Werror include/* src/*
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_lint.yml@v1
+    with:
+      source: 'src include/'
 
   job_lint_python:
     name: Lint Python code
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Clone
-        uses: actions/checkout@v4
-
-      - name: Install flake8
-        run: |
-          sudo apt update
-          sudo apt install -y flake8
-
-      - name: Lint Python code
-        run: cd tests/speculos && flake8
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_python_checks.yml@v1
+    with:
+      run_type_check: true
+      src_directory: .
+      setup_directory: tests/speculos
+      req_directory: tests/speculos

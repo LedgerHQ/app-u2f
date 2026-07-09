@@ -18,14 +18,13 @@
 
 #include <string.h>
 
-#include "os.h"
-#include "cx.h"
-
 #include "config.h"
-#include "crypto_data.h"
 #include "credential.h"
+#include "crypto_data.h"
+#include "cx.h"
+#include "os.h"
 
-bool crypto_compare(const uint8_t *a, const uint8_t *b, uint16_t length) {
+bool crypto_compare(const uint8_t* a, const uint8_t* b, uint16_t length) {
     uint16_t given_length = length;
     uint8_t status = 0;
     uint16_t counter = 0;
@@ -43,20 +42,16 @@ bool crypto_compare(const uint8_t *a, const uint8_t *b, uint16_t length) {
     return (status == 0);
 }
 
-int crypto_generate_private_key(const uint8_t *nonce,
-                                cx_ecfp_private_key_t *private_key,
+int crypto_generate_private_key(const uint8_t* nonce,
+                                cx_ecfp_private_key_t* private_key,
                                 cx_curve_t curve) {
     int status = 0;
     uint8_t private_key_data[CREDENTIAL_PRIVATE_KEY_SIZE];
 
-    cx_hmac_sha256((const uint8_t *) N_u2f.privateHmacKey,
-                   sizeof(N_u2f.privateHmacKey),
-                   nonce,
-                   CREDENTIAL_NONCE_SIZE,
-                   private_key_data,
-                   CREDENTIAL_PRIVATE_KEY_SIZE);
-    if (cx_ecfp_init_private_key_no_throw(curve,
-                                          private_key_data,
+    cx_hmac_sha256((const uint8_t*)N_u2f.privateHmacKey,
+                   sizeof(N_u2f.privateHmacKey), nonce, CREDENTIAL_NONCE_SIZE,
+                   private_key_data, CREDENTIAL_PRIVATE_KEY_SIZE);
+    if (cx_ecfp_init_private_key_no_throw(curve, private_key_data,
                                           CREDENTIAL_PRIVATE_KEY_SIZE,
                                           private_key) != CX_OK) {
         PRINTF("Fail to init private key\n");
@@ -69,12 +64,12 @@ int crypto_generate_private_key(const uint8_t *nonce,
     return status;
 }
 
-int crypto_generate_public_key(cx_ecfp_private_key_t *private_key,
-                               uint8_t *public_key,
-                               cx_curve_t curve) {
+int crypto_generate_public_key(cx_ecfp_private_key_t* private_key,
+                               uint8_t* public_key, cx_curve_t curve) {
     cx_ecfp_public_key_t app_public_key;
 
-    if (cx_ecfp_generate_pair_no_throw(curve, &app_public_key, private_key, 1) != CX_OK) {
+    if (cx_ecfp_generate_pair_no_throw(curve, &app_public_key, private_key,
+                                       1) != CX_OK) {
         PRINTF("Fail to generate pair\n");
         return -1;
     }
@@ -83,24 +78,19 @@ int crypto_generate_public_key(cx_ecfp_private_key_t *private_key,
     return app_public_key.W_len;
 }
 
-static int crypto_sign(const uint8_t *data_hash,
-                       cx_ecfp_private_key_t *private_key,
-                       uint8_t *signature) {
+static int crypto_sign(const uint8_t* data_hash,
+                       cx_ecfp_private_key_t* private_key, uint8_t* signature) {
     size_t length;
     size_t domain_length;
 
-    if (cx_ecdomain_parameters_length(CX_CURVE_SECP256R1, &domain_length) != CX_OK) {
+    if (cx_ecdomain_parameters_length(CX_CURVE_SECP256R1, &domain_length) !=
+        CX_OK) {
         return -1;
     }
 
     length = 6 + 2 * (domain_length + 1);
-    if (cx_ecdsa_sign_no_throw(private_key,
-                               CX_RND_TRNG | CX_LAST,
-                               CX_NONE,
-                               data_hash,
-                               CX_SHA256_SIZE,
-                               signature,
-                               &length,
+    if (cx_ecdsa_sign_no_throw(private_key, CX_RND_TRNG | CX_LAST, CX_NONE,
+                               data_hash, CX_SHA256_SIZE, signature, &length,
                                NULL) != CX_OK) {
         PRINTF("Fail to sign\n");
         return -1;
@@ -109,17 +99,16 @@ static int crypto_sign(const uint8_t *data_hash,
     return length;
 }
 
-int crypto_sign_application(const uint8_t *data_hash,
-                            cx_ecfp_private_key_t *private_key,
-                            uint8_t *signature) {
+int crypto_sign_application(const uint8_t* data_hash,
+                            cx_ecfp_private_key_t* private_key,
+                            uint8_t* signature) {
     return crypto_sign(data_hash, private_key, signature);
 }
 
-int crypto_sign_attestation(const uint8_t *data_hash, uint8_t *signature) {
+int crypto_sign_attestation(const uint8_t* data_hash, uint8_t* signature) {
     cx_ecfp_private_key_t attestation_private_key;
 
-    if (cx_ecfp_init_private_key_no_throw(CX_CURVE_SECP256R1,
-                                          ATTESTATION_KEY,
+    if (cx_ecfp_init_private_key_no_throw(CX_CURVE_SECP256R1, ATTESTATION_KEY,
                                           32,
                                           &attestation_private_key) != CX_OK) {
         return -1;

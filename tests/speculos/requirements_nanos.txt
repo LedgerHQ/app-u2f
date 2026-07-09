@@ -1,0 +1,6 @@
+ledgered
+speculos==0.25.5
+ragger[tests]>=1.7.0
+pytest>=6.1.1,<7.0.0
+cryptography>=3.3.1,<4.0.0
+fido2==1.0.0
